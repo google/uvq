@@ -46,6 +46,15 @@ INPUT_WIDTH_CONTENT = 496
 INPUT_CHANNEL_CONTENT = 3
 DIM_LABEL_CONTENT = 3862
 
+def extend_array(rgb, total_len):
+  """Extends the byte array (or truncates) to be total_len"""
+  missing = total_len - len(rgb)
+  if missing < 0:
+    rgb = rgb[0 : total_len]
+  else:
+    rgb.extend(bytearray(missing))
+  return rgb
+
 
 def load_video(filepath, video_length, transpose=False):
   """Load input video."""
@@ -57,15 +66,17 @@ def load_video(filepath, video_length, transpose=False):
 
   # Sample at constant frame rate, and save as RGB24 (RGBRGB...)
   fd, temp_filename = tempfile.mkstemp()
+  fd_small, temp_filename_small = tempfile.mkstemp()
   cmd = (
-      'ffmpeg  -i %s'
-      ' -vf "%sscale=w=%d:h=%d:force_original_aspect_ratio=1,'
-      'pad=%d:%d:(ow-iw)/2:(oh-ih)/2"'
-      ' -r %d -f rawvideo -pix_fmt rgb24'
-      ' -y %s'
+      'ffmpeg  -i %s -filter_complex '
+      ' "[0:v]%sscale=w=%d:h=%d:flags=bicubic:force_original_aspect_ratio=1,'
+      'pad=%d:%d:(ow-iw)/2:(oh-ih)/2,format=rgb24,split=2[out1][tmp],[tmp]scale=%d:%d:flags=bilinear[out2]"'
+      ' -map [out1] -r %d -f rawvideo -pix_fmt rgb24 -y %s'
+      ' -map [out2] -r %d -f rawvideo -pix_fmt rgb24 -y %s'
   ) % (filepath, transpose_param, VIDEO_WIDTH, VIDEO_HEIGHT,
-       VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FPS,
-       temp_filename)
+       VIDEO_WIDTH, VIDEO_HEIGHT, INPUT_WIDTH_CONTENT, INPUT_HEIGHT_CONTENT,
+       VIDEO_FPS, temp_filename, VIDEO_FPS, temp_filename_small)
+
   try:
     logging.info('Run with cmd:% s\n', cmd)
     subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
@@ -80,35 +91,22 @@ def load_video(filepath, video_length, transpose=False):
                               INPUT_WIDTH_CONTENT, INPUT_CHANNEL_CONTENT),
                              np.float32)
 
-  with gfile.Open(temp_filename, 'rb') as rgb_file:
-    rgb = bytearray(rgb_file.read())
-    frame_size = VIDEO_WIDTH * VIDEO_HEIGHT * VIDEO_CHANNEL
-    total_len = video_length * VIDEO_FPS * frame_size
-    missing = total_len - len(rgb)
-    if missing < 0:
-      rgb = rgb[0 : total_len]
-    else:
-      rgb.extend(bytearray(missing))
 
-    for i in range(video_length):
-      for j in range(VIDEO_FPS):
-        index = i * VIDEO_FPS + j
-        frame = bytes(rgb[index*frame_size : (index+1)*frame_size])
-        im = Image.frombytes('RGB', (VIDEO_WIDTH, VIDEO_HEIGHT), frame)
-        video[i, j, :] = (np.resize(im.getdata(),
-                                    (VIDEO_HEIGHT, VIDEO_WIDTH, VIDEO_CHANNEL))
-                          / 255.0 - 0.5) * 2
-        im_resized = im.resize((INPUT_HEIGHT_CONTENT, INPUT_WIDTH_CONTENT),
-                               resample=Image.BILINEAR)
-
-        video_resized[
-            i, j, :] = (np.resize(im_resized.getdata(),
-                                  (INPUT_HEIGHT_CONTENT, INPUT_WIDTH_CONTENT,
-                                   INPUT_CHANNEL_CONTENT)) / 255.0 - 0.5) * 2
+  with gfile.Open(temp_filename, 'rb') as rgb_file, gfile.Open(temp_filename_small, 'rb') as rgb_file_small:
+    rgb = extend_array(bytearray(rgb_file.read()),
+                       video_length * VIDEO_FPS * VIDEO_WIDTH * VIDEO_HEIGHT * VIDEO_CHANNEL)
+    rgb_small = extend_array(bytearray(rgb_file_small.read()),
+                             video_length * VIDEO_FPS * INPUT_WIDTH_CONTENT * INPUT_HEIGHT_CONTENT * VIDEO_CHANNEL)
+    video = (np.reshape(np.frombuffer(rgb, 'uint8'),
+                        (video_length, int(VIDEO_FPS), VIDEO_HEIGHT, VIDEO_WIDTH, 3))/255.0 - 0.5) *2
+    video_resized = (np.reshape(np.frombuffer(rgb_small, 'uint8'),
+                                (video_length, int(VIDEO_FPS), INPUT_HEIGHT_CONTENT, INPUT_WIDTH_CONTENT, 3))/255.0 - 0.5) *2
 
   # Delete temp files
   os.close(fd)
   os.remove(temp_filename)
+  os.close(fd_small)
+  os.remove(temp_filename_small)
   logging.info('Load %s done successfully.', filepath)
   return video, video_resized
 
