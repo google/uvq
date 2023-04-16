@@ -81,20 +81,23 @@ def load_video(filepath, video_length, transpose=False):
     logging.info('Run with cmd:% s\n', cmd)
     subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
   except subprocess.CalledProcessError as error:
-    logging.error('Run with cmd: %s \n terminated with return code %s\n%s',
+    logging.fatal('Run with cmd: %s \n terminated with return code %s\n%s',
                   cmd, str(error.returncode), error.output)
+    raise error
 
   # For video, the entire video is divided into 1s chunks in 5 fps
-  video = np.ndarray((video_length, VIDEO_FPS, VIDEO_HEIGHT, VIDEO_WIDTH,
-                      VIDEO_CHANNEL), np.float32)
-  video_resized = np.ndarray((video_length, VIDEO_FPS, INPUT_HEIGHT_CONTENT,
-                              INPUT_WIDTH_CONTENT, INPUT_CHANNEL_CONTENT),
-                             np.float32)
-
-
   with gfile.Open(temp_filename, 'rb') as rgb_file, gfile.Open(temp_filename_small, 'rb') as rgb_file_small:
-    rgb = extend_array(bytearray(rgb_file.read()),
-                       video_length * VIDEO_FPS * VIDEO_WIDTH * VIDEO_HEIGHT * VIDEO_CHANNEL)
+    single_frame_size = VIDEO_WIDTH * VIDEO_HEIGHT * VIDEO_CHANNEL
+    full_decode_size = video_length * VIDEO_FPS * single_frame_size
+    assert rgb_file.size() >= single_frame_size,  f'Decoding failed to output a single frame: {rgb_file.size()} < {single_frame_size}'
+    if rgb_file.size() < full_decode_size:
+      logging.warn('Decoding may be truncated: %d bytes (%d frames) < %d bytes (%d frames),'
+                   ' or video length (%ds) may be too short',
+                   rgb_file.size(), rgb_file.size() / single_frame_size,
+                   full_decode_size, full_decode_size / single_frame_size,
+                   video_length)
+
+    rgb = extend_array(bytearray(rgb_file.read()), full_decode_size)
     rgb_small = extend_array(bytearray(rgb_file_small.read()),
                              video_length * VIDEO_FPS * INPUT_WIDTH_CONTENT * INPUT_HEIGHT_CONTENT * VIDEO_CHANNEL)
     video = (np.reshape(np.frombuffer(rgb, 'uint8'),

@@ -41,7 +41,7 @@ You can then run the example:
 
 ```bash
 mkdir -p results
-python3 uvq_main.py --input_files='Gaming_1080P-0ce6_orig,20,Gaming_1080P-0ce6_orig.mp4' --output_dir results --model_dir models
+python3 uvq_main.py --input_files="Gaming_1080P-0ce6_orig,20,Gaming_1080P-0ce6_orig.mp4" --output_dir results --model_dir models
 ```
 
 #### Input file formatting
@@ -53,7 +53,7 @@ The input files format is a line with the following fields:
 
 The `output_dir` will contain a csv file with the results for each model. For example,
 ```bash
-cat /tmp/results/mos_ytugc20s_0_Gaming_1080P-0ce6_orig.mp4_orig.csv 
+cat results/mos_ytugc20s_0_Gaming_1080P-0ce6_orig.mp4_orig.csv
 ```
 Gives:
 ```bash
