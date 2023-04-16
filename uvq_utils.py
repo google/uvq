@@ -92,7 +92,7 @@ def load_video(filepath, video_length, transpose=False):
     assert rgb_file.size() >= single_frame_size,  f'Decoding failed to output a single frame: {rgb_file.size()} < {single_frame_size}'
     if rgb_file.size() < full_decode_size:
       logging.warn('Decoding may be truncated: %d bytes (%d frames) < %d bytes (%d frames),'
-                   ' or video length (%ds) may be too short',
+                   ' or video length (%ds) may be too incorrect',
                    rgb_file.size(), rgb_file.size() / single_frame_size,
                    full_decode_size, full_decode_size / single_frame_size,
                    video_length)
