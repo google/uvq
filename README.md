@@ -94,6 +94,7 @@ UVQ raw features (in binary):<br />
 <a href="https://github.com/yilinwang01"><img src="https://avatars.githubusercontent.com/u/30224449?v=4" title="yilinwang01" width="80" height="80"></a>
 <a href="https://github.com/nbirkbeck"><img src="https://avatars.githubusercontent.com/u/6225937?v=4" title="nbirkbeck" width="80" height="80"></a>
 <a href="https://github.com/megabalu"><img src="https://avatars.githubusercontent.com/u/99928166?v=4" title="megabalu" width="80" height="80"></a>
+<a href="https://github.com/megabalu"><img src="https://avatars.githubusercontent.com/u/188632463?v=4" title="yaohongwu-g" width="80" height="80"></a>
 
 [//]: contributor-faces
 
