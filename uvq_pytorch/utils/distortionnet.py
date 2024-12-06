@@ -35,6 +35,18 @@ OUTPUT_LABEL_DIM = 26
 
 
 class DistortionNet(nn.Module):
+    """
+    DistortionNet is based on the EfficientNet architecture. One can achieve the same
+    network by modifying torchvision's efficientnet_b0 model. The features layers will
+    be the same, but the final avgpool and classifier layers will need to change. Instead
+    of AdaptiveAvgPool2D will need to use MaxPool, and the classifier will consist of two
+    linear layers.
+    In addition if the intention is to use the baseline weights from the tensorflow implementation,
+    changes must be made to support the "same" padding used in tensorflow convolution layers.
+    In this implementation we have opted to not use the torchivision's efficientNet and instead
+    implement the layers from scratch with intorduction of a Conv2dSamePadding layer.
+    """
+
     def __init__(self, dropout=0.2):
         super().__init__()
         stochastic_depth_prob_step = 0.0125

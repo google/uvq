@@ -27,6 +27,22 @@ OUTPUT_LABEL_DIM = 1
 
 
 class CompressionNet(nn.Module):
+    """
+    The CompressionNet in architecture is mainly based on InceptionV1
+    which is found as googlenet in torchvision. One can modify googlenet to
+    achieve at the same network, but some changes would be necessary:
+    (1) changing the Conv2d and BatchNorm2d operations into Conv3d
+    and BatchNorm3d operation. (2) If one chooses to use the baseline
+    weights provided from the TensorFlow implementation, then they need to
+    make the necessary changes to support "same" padding offered in Tensorflow
+    convolutional layers. (3) Another change would be to use the hooks to output the
+    "features" layer's output rather than the final outputs of the network;
+    these features are later used by the aggregation network.
+
+    In this implementation, we have opted to implement the layers from scratch,
+    rather than modifying the torchvision's googlenet implementation.
+    """
+
     def __init__(self):
         super(CompressionNet, self).__init__()
         self.inception_block1 = InceptionMixedBlock()

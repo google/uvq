@@ -25,6 +25,16 @@ DIM_LABEL_CONTENT = 3862
 
 
 class ContentNet(nn.Module):
+    """
+    ContentNet is based on the EfficientNet architecture. One can achieve the same
+    network by modifying torchvision's efficientnet_b0 model. The features layers will
+    be the same, but the final classifier layers will need to change.
+    In addition if the intention is to use the baseline weights from the tensorflow implementation,
+    changes must be made to support the "same" padding used in tensorflow convolution layers.
+    In this implementation we have opted to not use the torchivision's efficientNet and instead
+    implement the layers from scratch with intorduction of a Conv2dSamePadding layer.
+    """
+
     def __init__(self, num_classes=DIM_LABEL_CONTENT, dropout=0.2):
         super().__init__()
         stochastic_depth_prob_step = 0.0125
