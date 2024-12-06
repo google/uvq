@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+from utils.aggregationnet import AggregationNetInference
 from utils.compressionnet import CompressionNetInference
 from utils.contentnet import ContentNetInference
 from utils.distortionnet import DistortionNetInference
@@ -18,6 +19,7 @@ class UVQInference:
         self.contentnet = ContentNetInference()
         self.compressionnet = CompressionNetInference()
         self.distotionnet = DistortionNetInference()
+        self.aggregationnet = AggregationNetInference()
 
         video_resized1, video_resized2 = self.load_video(
             video_filename, video_length, transpose
@@ -35,16 +37,11 @@ class UVQInference:
                 video=video_resized1,
             )
         )
-
-        print("content_features.shape", content_features.shape)
-        print("compression_features.shape", compression_features.shape)
-        print("distortion_features.shape", distortion_features.shape)
-        np.save("content_features3.npy", content_features)
-        np.save("compression_features3.npy", compression_features)
-        np.save("distortion_features3.npy", distortion_features)
-        np.save("content_labels3.npy", content_labels)
-        np.save("compression_labels3.npy", compression_labels)
-        np.save("distortion_labels3.npy", distortion_labels)
+        results = self.aggregationnet.predict(
+            compression_features, content_features, distortion_features
+        )
+        print(results)
+        return results
 
     def load_video(self, video_filename, video_length, transpose=False):
         video_resized1, video_resized2 = VideoReader.load_video(
