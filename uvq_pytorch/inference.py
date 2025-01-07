@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 import numpy as np
 import torch
@@ -8,7 +9,11 @@ from utils.aggregationnet import AggregationNetInference
 from utils.compressionnet import CompressionNetInference
 from utils.contentnet import ContentNetInference
 from utils.distortionnet import DistortionNetInference
-from utils.video_reader import VideoReader
+
+# append the path to the uvq/utils folder to the system path so that we can import video_reader
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from video_reader import VideoReader
+
 
 # Output feature size
 DIM_HEIGHT_FEATURE = 16
@@ -57,7 +62,10 @@ class UVQInference:
         return results
 
     def load_video(self, video_filename, video_length, transpose=False):
-        return VideoReader.load_video(video_filename, video_length, transpose)
+        video, video_small = VideoReader.load_video(video_filename, video_length, transpose)
+        video = video.transpose(0, 1, 4, 2, 3)
+        video_small = video_small.transpose(0, 1, 4, 2, 3)
+        return video, video_small
 
 
 def main():

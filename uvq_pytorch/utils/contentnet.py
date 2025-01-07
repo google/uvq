@@ -12,7 +12,6 @@ from .custom_nn_layers import (
     Interpolate,
     MBConvSamePadding,
 )
-from .video_reader import VideoReader
 
 MODEL_PATH = "checkpoint/contentnet_pytorch.pt"
 LABELS_CSV_PATH = "checkpoint/contentnet_labels.csv"
