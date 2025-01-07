@@ -1,5 +1,5 @@
 import argparse
-import re
+import os
 
 import numpy as np
 import torch
@@ -59,10 +59,24 @@ def main():
     video_filename = args.video_filename
     video_length = args.video_length
     transpose = args.transpose
+    output_filepath = args.output
+
     uvq_inference = UVQInference()
     results: dict[str, float] = uvq_inference.infer(
         video_filename, video_length, transpose
     )
+
+    if output_filepath != "":
+        write_dict_to_file(results, output_filepath)
+
+
+def write_dict_to_file(output_dict, output_filepath):
+    dirname = os.path.dirname(output_filepath)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    with open(output_filepath, "w") as f:
+        for key, value in output_dict.items():
+            f.write(f"{key}: {value}\n")
 
 
 def setup_parser():
@@ -81,6 +95,13 @@ def setup_parser():
         "--transpose",
         action="store_true",
         help="If specified, the video will be transposed before processing",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        help="Path to the output file",
+        default="",
+        required=False,
     )
     return parser
 
