@@ -156,45 +156,28 @@ class CompressionNetInference:
             np.float32,
         )
 
-        if self.depth == 1:
-            # TODO: this is for distortionnet; for compressionnet keep only the "else" part.
-            patch = np.ndarray(
-                (1, self.video_channels, self.patch_height, self.patch_width),
-                np.float32,
-            )
-        else:
-            video = video.transpose(0, 2, 1, 3, 4)
-            patch = np.ndarray(
-                (
-                    1,
-                    self.video_channels,
-                    self.depth,
-                    self.patch_height,
-                    self.patch_width,
-                ),
-                np.float32,
-            )
+        video = video.transpose(0, 2, 1, 3, 4)
+        patch = np.ndarray(
+            (
+                1,
+                self.video_channels,
+                self.depth,
+                self.patch_height,
+                self.patch_width,
+            ),
+            np.float32,
+        )
 
         for k in range(video.shape[0]):
             for j in range(self.num_patches_y):
                 for i in range(self.num_patches_x):
-                    if self.depth == 1:
-                        # TODO: this would work for distortionnet, it's not used here and should be cleaned up; keep only the "else" part
-                        patch[0, :] = video[
-                            k,
-                            0,
-                            :,
-                            j * self.patch_height : (j + 1) * self.patch_height,
-                            i * self.patch_width : (i + 1) * self.patch_width,
-                        ]
-                    else:
-                        patch[0, :] = video[
-                            k,
-                            :,
-                            :,
-                            j * self.patch_height : (j + 1) * self.patch_height,
-                            i * self.patch_width : (i + 1) * self.patch_width,
-                        ]
+                    patch[0, :] = video[
+                        k,
+                        :,
+                        :,
+                        j * self.patch_height : (j + 1) * self.patch_height,
+                        i * self.patch_width : (i + 1) * self.patch_width,
+                    ]
 
                     patch_feature, patch_label = self.predict_and_get_features(patch)
                     feature[
