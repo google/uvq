@@ -6,4 +6,4 @@ python inference.py Gaming_1080P-0ce6_orig.mp4 20
 ```
 first argument being the name of the file and the second one the length of the video.
 
-This will generate 6 files corresponding to ContentNet, CompressionNet, DistortionNet features and labels.
+This will print out a dictionary containing UVQ scores based on different combinations of CompressionNet, DistortionNet, and ContentNet.

@@ -57,8 +57,9 @@ def main():
     video_length = int(sys.argv[2])
     transpose = False
     uvq_inference = UVQInference()
-    uvq_inference.infer(video_filename, video_length, transpose)
-    return uvq_inference
+    results: dict[str, float] = uvq_inference.infer(
+        video_filename, video_length, transpose
+    )
 
 
 if __name__ == "__main__":
