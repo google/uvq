@@ -17,7 +17,17 @@ DIM_CHANNEL_FEATURE = 100
 
 
 class UVQInference:
-    def infer(self, video_filename, video_length, transpose=False):
+    def infer(
+        self, video_filename: str, video_length: int, transpose: bool = False
+    ) -> dict[str, float]:
+        """
+        Args:
+            video_filename: Path to the video file
+            video_length: Length of the video in frames
+            transpose: whether to transpose the video before processing
+        Returns:
+            A dictionary containing the UVQ scores for each category
+        """
 
         self.contentnet = ContentNetInference()
         self.compressionnet = CompressionNetInference()
@@ -67,12 +77,12 @@ def main():
         write_dict_to_file(results, output_filepath)
 
 
-def write_dict_to_file(output_dict, output_filepath):
+def write_dict_to_file(d: dict, output_filepath: str) -> None:
     dirname = os.path.dirname(output_filepath)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     with open(output_filepath, "w") as f:
-        for key, value in output_dict.items():
+        for key, value in d.items():
             f.write(f"{key}: {value}\n")
 
 

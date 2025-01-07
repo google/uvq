@@ -264,7 +264,7 @@ class DistortionNetInference:
         self.label_dim = label_dim
 
     def load_state_dict(self, model_path) -> nn.Module:
-        model = torch.load(model_path)
+        model = torch.load(model_path, weights_only=True)
         self.model.load_state_dict(model)
         return model
 
@@ -283,8 +283,20 @@ class DistortionNetInference:
 
     def get_labels_and_features_for_all_frames(
         self,
-        video,
-    ):
+        video: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Gets the predicted labels and features for all frames in a video.
+
+        Args:
+            video (np.ndarray): 5d array of shape (num_seconds, fps, channels=3, height=720, width=1280) with values in [-1, 1] range
+
+        Returns:
+            feature (np.ndarray): 4d array of shape (num_seconds, 16, 16, channels=100) of features to be used in aggregation
+            label (np.ndarray): 2d array of shape (num_seconds, 2, 2, 26) of predicted probabilities for 26 distortion classes for each frame partitioned into 2*2 patches
+
+        Note that even thought the input video can have any fps, computation is performed only on the first frame of each second.
+        """
         # TODO: allow converting video to a batch of patches and running batch prediction instead of sliding window for loops
         label = np.ndarray(
             (video.shape[0], self.num_patches_y, self.num_patches_x, self.label_dim),

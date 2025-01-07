@@ -1,3 +1,5 @@
+from typing import Union
+
 import numpy as np
 import pandas as pd
 import torch
@@ -90,7 +92,7 @@ class ContentNetInference:
         self.features_transpose = (0, 2, 3, 1)
 
     def load_state_dict(self, model_path) -> torch.nn.Module:
-        model = torch.load(model_path)
+        model = torch.load(model_path, weights_only=True)
         self.model.load_state_dict(model)
         return model
 
@@ -108,10 +110,23 @@ class ContentNetInference:
         )
 
     def load_labels_df(self, csv_path) -> pd.DataFrame:
-        df = pd.read_csv(csv_path)
-        return df
+        return pd.read_csv(csv_path)
 
-    def label_probabilities_to_text(self, label_probs, top_n=1):
+    def label_probabilities_to_text(
+        self, label_probs: Union[list, np.ndarray], top_n: int = 1
+    ) -> tuple[list, list, list]:
+        """
+        Converts the label probabilities to text.
+
+        Args:
+            label_probs (list or np.ndarray): 1d array of shape (num_classes=3862) of predicted porbabilities for each class
+            top_n (int): number of top predictions to return
+
+        Returns:
+            predicted (list): list of top_n predicted labels
+            probs (list): list of top_n predicted probabilities
+            indices (list): list of top_n predicted indices
+        """
         top_indices = label_probs.argsort()[: -top_n - 1 : -1]
         probs = label_probs[top_indices]
         predicted = self.label_mapping.merge(
@@ -123,16 +138,21 @@ class ContentNetInference:
             predicted["Index"].tolist(),
         )
 
-    def infer_from_input_video(self, video_filename, video_length, transpose=False):
-        video, video_resized = VideoReader.load_video(
-            video_filename, video_length, transpose
-        )
-        video_features, video_labels = self.get_labels_and_features_for_all_frames(
-            video_resized
-        )
-        return video_features, video_labels
+    def get_labels_and_features_for_all_frames(
+        self, video: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Gets the predicted labels and features for all frames(seconds) in a video.
 
-    def get_labels_and_features_for_all_frames(self, video):
+        Args:
+            video (np.ndarray): 5d array of shape (num_seconds, fps, channels=3, height=496, width=496) with values in [-1, 1] range
+
+        Returns:
+            feature (np.ndarray): 4d array of shape (num_seconds, 16, 16, channels=100) of features to be used in aggregation
+            label (np.ndarray): 2d array of shape (num_seconds, num_classes=3862) of predicted porbabilities for each class
+
+        Note that even thought the input video can have any fps, computation is performed only on the first frame of each second.
+        """
         label = np.ndarray((video.shape[0], DIM_LABEL_CONTENT), np.float32)
         feature = np.ndarray(
             (

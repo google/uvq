@@ -91,7 +91,7 @@ class AggregationNetInference:
         return models
 
     def read_state_dict(self, model_path: str) -> dict[str, torch.Tensor]:
-        state_dict = torch.load(model_path)
+        state_dict = torch.load(model_path, weights_only=True)
         return state_dict
 
     def get_model_names_iterator(self) -> Iterator[tuple[str, list[str]]]:
