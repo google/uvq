@@ -47,10 +47,7 @@ class UVQInference:
         return results
 
     def load_video(self, video_filename, video_length, transpose=False):
-        video_resized1, video_resized2 = VideoReader.load_video(
-            video_filename, video_length, transpose
-        )
-        return video_resized1, video_resized2
+        return VideoReader.load_video(video_filename, video_length, transpose)
 
 
 def main():
