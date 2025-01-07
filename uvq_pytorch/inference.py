@@ -1,3 +1,6 @@
+import argparse
+import re
+
 import numpy as np
 import torch
 
@@ -51,15 +54,35 @@ class UVQInference:
 
 
 def main():
-    import sys
-
-    video_filename = sys.argv[1]
-    video_length = int(sys.argv[2])
-    transpose = False
+    parser = setup_parser()
+    args = parser.parse_args()
+    video_filename = args.video_filename
+    video_length = args.video_length
+    transpose = args.transpose
     uvq_inference = UVQInference()
     results: dict[str, float] = uvq_inference.infer(
         video_filename, video_length, transpose
     )
+
+
+def setup_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "video_filename",
+        type=str,
+        help="Path to the video file",
+    )
+    parser.add_argument(
+        "video_length",
+        type=int,
+        help="Length of the video in frames",
+    )
+    parser.add_argument(
+        "--transpose",
+        action="store_true",
+        help="If specified, the video will be transposed before processing",
+    )
+    return parser
 
 
 if __name__ == "__main__":
