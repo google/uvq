@@ -79,7 +79,7 @@ def main():
 
 def write_dict_to_file(d: dict, output_filepath: str) -> None:
     dirname = os.path.dirname(output_filepath)
-    if not os.path.exists(dirname):
+    if dirname != "" and not os.path.exists(dirname):
         os.makedirs(dirname)
     with open(output_filepath, "w") as f:
         for key, value in d.items():
