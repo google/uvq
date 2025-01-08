@@ -1,20 +1,18 @@
-from functools import partial
+import functools
+import os
 
 import numpy as np
 import torch
 
-from torch import nn, Tensor
+from torch import nn
 
-from .custom_nn_layers import (
-    Conv2dNormActivationSamePadding,
-    Conv2dSamePadding,
-    MBConvSamePadding,
-    PermuteLayerNHWC,
+from utils import custom_nn_layers
+
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "checkpoint/distortionnet_pytorch_statedict.pt")
+
+default_distortionnet_batchnorm2d = functools.partial(
+    nn.BatchNorm2d, eps=0.001, momentum=0
 )
-
-MODEL_PATH = "checkpoint/distortionnet_pytorch_statedict.pt"
-
-default_distortionnet_batchnorm2d = partial(nn.BatchNorm2d, eps=0.001, momentum=0)
 
 # Input video size
 VIDEO_HEIGHT = 720
@@ -44,7 +42,7 @@ class DistortionNet(nn.Module):
     In addition if the intention is to use the baseline weights from the tensorflow implementation,
     changes must be made to support the "same" padding used in tensorflow convolution layers.
     In this implementation we have opted to not use the torchivision's efficientNet and instead
-    implement the layers from scratch with intorduction of a Conv2dSamePadding layer.
+    implement the layers from scratch with introduction of a Conv2dSamePadding layer.
     """
 
     def __init__(self, dropout=0.2):
@@ -52,7 +50,7 @@ class DistortionNet(nn.Module):
         stochastic_depth_prob_step = 0.0125
         stochastic_depth_prob = [x * stochastic_depth_prob_step for x in range(16)]
         self.features = nn.Sequential(
-            Conv2dNormActivationSamePadding(
+            custom_nn_layers.Conv2dNormActivationSamePadding(
                 3,
                 32,
                 kernel_size=3,
@@ -60,7 +58,7 @@ class DistortionNet(nn.Module):
                 activation_layer=nn.SiLU,
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 32,
                 1,
                 16,
@@ -69,7 +67,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[0],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 16,
                 6,
                 24,
@@ -78,7 +76,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[1],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 24,
                 6,
                 24,
@@ -87,7 +85,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[2],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 24,
                 6,
                 40,
@@ -96,7 +94,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[3],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 40,
                 6,
                 40,
@@ -105,7 +103,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[4],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 40,
                 6,
                 80,
@@ -114,7 +112,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[5],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 80,
                 6,
                 80,
@@ -123,7 +121,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[6],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 80,
                 6,
                 80,
@@ -132,7 +130,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[7],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 80,
                 6,
                 112,
@@ -141,7 +139,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[8],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 112,
                 6,
                 112,
@@ -150,7 +148,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[9],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 112,
                 6,
                 112,
@@ -159,7 +157,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[10],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 112,
                 6,
                 192,
@@ -168,7 +166,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[11],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 192,
                 6,
                 192,
@@ -177,7 +175,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[12],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 192,
                 6,
                 192,
@@ -186,7 +184,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[13],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 192,
                 6,
                 192,
@@ -195,7 +193,7 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[14],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            MBConvSamePadding(
+            custom_nn_layers.MBConvSamePadding(
                 192,
                 6,
                 320,
@@ -204,11 +202,13 @@ class DistortionNet(nn.Module):
                 stochastic_depth_prob[15],
                 norm_layer=default_distortionnet_batchnorm2d,
             ),
-            Conv2dSamePadding(320, 100, kernel_size=(12, 20), stride=1, bias=False),
+            custom_nn_layers.Conv2dSamePadding(
+                320, 100, kernel_size=(12, 20), stride=1, bias=False
+            ),
         )
         self.avgpool = nn.Sequential(
             nn.MaxPool2d(kernel_size=(5, 13), stride=1, padding=0),
-            PermuteLayerNHWC(),
+            custom_nn_layers.PermuteLayerNHWC(),
         )
         self.classifier = nn.Sequential(
             nn.Dropout(p=dropout),
@@ -270,7 +270,7 @@ class DistortionNetInference:
 
     def predict(self, frame):
         with torch.no_grad():
-            _, label_probs = self.model(Tensor(frame))
+            _, label_probs = self.model(torch.Tensor(frame))
         return label_probs.detach().numpy()
 
     def predict_and_get_features(self, frame) -> tuple[np.ndarray, np.ndarray]:

@@ -1,20 +1,15 @@
-from typing import Union
-
+import typing
+import os
 import numpy as np
 import pandas as pd
 import torch
 
-from torch import nn, Tensor
+from torch import nn
 
-from .custom_nn_layers import (
-    Conv2dNormActivationSamePadding,
-    Conv2dSamePadding,
-    Interpolate,
-    MBConvSamePadding,
-)
+from utils import custom_nn_layers
 
-MODEL_PATH = "checkpoint/contentnet_pytorch.pt"
-LABELS_CSV_PATH = "checkpoint/contentnet_labels.csv"
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "checkpoint/contentnet_pytorch.pt")
+LABELS_CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "checkpoint/contentnet_labels.csv")
 
 # Output feature size
 DIM_HEIGHT_FEATURE = 16
@@ -33,7 +28,7 @@ class ContentNet(nn.Module):
     In addition if the intention is to use the baseline weights from the tensorflow implementation,
     changes must be made to support the "same" padding used in tensorflow convolution layers.
     In this implementation we have opted to not use the torchivision's efficientNet and instead
-    implement the layers from scratch with intorduction of a Conv2dSamePadding layer.
+    implement the layers from scratch with introduction of a Conv2dSamePadding layer.
     """
 
     def __init__(self, num_classes=DIM_LABEL_CONTENT, dropout=0.2):
@@ -41,27 +36,27 @@ class ContentNet(nn.Module):
         stochastic_depth_prob_step = 0.0125
         stochastic_depth_prob = [x * stochastic_depth_prob_step for x in range(16)]
         self.features = nn.Sequential(
-            Conv2dNormActivationSamePadding(
+            custom_nn_layers.Conv2dNormActivationSamePadding(
                 3, 32, kernel_size=3, stride=2, activation_layer=nn.SiLU
             ),
-            MBConvSamePadding(32, 1, 16, 3, 1, stochastic_depth_prob[0]),
-            MBConvSamePadding(16, 6, 24, 3, 2, stochastic_depth_prob[1]),
-            MBConvSamePadding(24, 6, 24, 3, 1, stochastic_depth_prob[2]),
-            MBConvSamePadding(24, 6, 40, 5, 2, stochastic_depth_prob[3]),
-            MBConvSamePadding(40, 6, 40, 5, 1, stochastic_depth_prob[4]),
-            MBConvSamePadding(40, 6, 80, 3, 2, stochastic_depth_prob[5]),
-            MBConvSamePadding(80, 6, 80, 3, 1, stochastic_depth_prob[6]),
-            MBConvSamePadding(80, 6, 80, 3, 1, stochastic_depth_prob[7]),
-            MBConvSamePadding(80, 6, 112, 5, 1, stochastic_depth_prob[8]),
-            MBConvSamePadding(112, 6, 112, 5, 1, stochastic_depth_prob[9]),
-            MBConvSamePadding(112, 6, 112, 5, 1, stochastic_depth_prob[10]),
-            MBConvSamePadding(112, 6, 192, 5, 2, stochastic_depth_prob[11]),
-            MBConvSamePadding(192, 6, 192, 5, 1, stochastic_depth_prob[12]),
-            MBConvSamePadding(192, 6, 192, 5, 1, stochastic_depth_prob[13]),
-            MBConvSamePadding(192, 6, 192, 5, 1, stochastic_depth_prob[14]),
-            MBConvSamePadding(192, 6, 320, 3, 1, stochastic_depth_prob[15]),
-            Interpolate(size=(16, 16), mode="bilinear", align_corners=False),
-            Conv2dSamePadding(320, 100, kernel_size=16, stride=1),
+            custom_nn_layers.MBConvSamePadding(32, 1, 16, 3, 1, stochastic_depth_prob[0]),
+            custom_nn_layers.MBConvSamePadding(16, 6, 24, 3, 2, stochastic_depth_prob[1]),
+            custom_nn_layers.MBConvSamePadding(24, 6, 24, 3, 1, stochastic_depth_prob[2]),
+            custom_nn_layers.MBConvSamePadding(24, 6, 40, 5, 2, stochastic_depth_prob[3]),
+            custom_nn_layers.MBConvSamePadding(40, 6, 40, 5, 1, stochastic_depth_prob[4]),
+            custom_nn_layers.MBConvSamePadding(40, 6, 80, 3, 2, stochastic_depth_prob[5]),
+            custom_nn_layers.MBConvSamePadding(80, 6, 80, 3, 1, stochastic_depth_prob[6]),
+            custom_nn_layers.MBConvSamePadding(80, 6, 80, 3, 1, stochastic_depth_prob[7]),
+            custom_nn_layers.MBConvSamePadding(80, 6, 112, 5, 1, stochastic_depth_prob[8]),
+            custom_nn_layers.MBConvSamePadding(112, 6, 112, 5, 1, stochastic_depth_prob[9]),
+            custom_nn_layers.MBConvSamePadding(112, 6, 112, 5, 1, stochastic_depth_prob[10]),
+            custom_nn_layers.MBConvSamePadding(112, 6, 192, 5, 2, stochastic_depth_prob[11]),
+            custom_nn_layers.MBConvSamePadding(192, 6, 192, 5, 1, stochastic_depth_prob[12]),
+            custom_nn_layers.MBConvSamePadding(192, 6, 192, 5, 1, stochastic_depth_prob[13]),
+            custom_nn_layers.MBConvSamePadding(192, 6, 192, 5, 1, stochastic_depth_prob[14]),
+            custom_nn_layers.MBConvSamePadding(192, 6, 320, 3, 1, stochastic_depth_prob[15]),
+            custom_nn_layers.Interpolate(size=(16, 16), mode="bilinear", align_corners=False),
+            custom_nn_layers.Conv2dSamePadding(320, 100, kernel_size=16, stride=1),
         )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.classifier = nn.Sequential(
@@ -80,7 +75,7 @@ class ContentNet(nn.Module):
 
 class ContentNetInference:
     def __init__(
-        self, model_path=MODEL_PATH, num_classes=3862, eval_mode=True, pretrained=True
+        self, model_path=MODEL_PATH, num_classes=DIM_LABEL_CONTENT, eval_mode=True, pretrained=True
     ):
         self.model = ContentNet(num_classes=num_classes)
         if pretrained:
@@ -97,7 +92,7 @@ class ContentNetInference:
 
     def predict(self, frame):
         with torch.no_grad():
-            _, label_probs = self.model(Tensor(np.expand_dims(frame, 0)))
+            _, label_probs = self.model(torch.Tensor(np.expand_dims(frame, 0)))
         return label_probs.detach().numpy()
 
     def predict_and_get_features(self, frame) -> tuple[np.ndarray, np.ndarray]:
@@ -112,7 +107,7 @@ class ContentNetInference:
         return pd.read_csv(csv_path)
 
     def label_probabilities_to_text(
-        self, label_probs: Union[list, np.ndarray], top_n: int = 1
+        self, label_probs: typing.Union[list, np.ndarray], top_n: int = 1
     ) -> tuple[list, list, list]:
         """
         Converts the label probabilities to text.

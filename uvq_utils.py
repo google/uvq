@@ -26,7 +26,7 @@ import tensorflow as tf
 from tensorflow.compat.v1 import gfile, saved_model
 from tensorflow.compat.v1 import ConfigProto, Session, Graph
 
-from utils.video_reader import VideoReader
+from utils import video_reader
 
 
 # Explicitly set input size
@@ -119,7 +119,7 @@ def generate_subnet_feature(video, model_path, input_width, input_height,
 def generate_features(video_id, video_length, filepath, model_dir, output_dir,
                       transpose=False):
   """Generate features from input video."""
-  video, video_resized = VideoReader.load_video(filepath, video_length, transpose)
+  video, video_resized = video_reader.VideoReader.load_video(filepath, video_length, transpose)
 
   feature_compression, label_compression = generate_subnet_feature(
       video, '%s/compressionnet_baseline' % model_dir,

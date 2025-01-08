@@ -1,11 +1,12 @@
+import os
 import numpy as np
 import torch
 
-from torch import nn, Tensor
+from torch import nn
 
-from .custom_nn_layers import Conv3DSamePadding, InceptionMixedBlock
+from utils import custom_nn_layers
 
-MODEL_PATH = "checkpoint/compressionnet_pytorch_statedict.pt"
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "checkpoint/compressionnet_pytorch_statedict.pt")
 
 
 # Input video size
@@ -45,12 +46,12 @@ class CompressionNet(nn.Module):
 
     def __init__(self):
         super(CompressionNet, self).__init__()
-        self.inception_block1 = InceptionMixedBlock()
+        self.inception_block1 = custom_nn_layers.InceptionMixedBlock()
         self.final_conv3d = nn.Conv3d(
             1024, 100, kernel_size=(1, 3, 7), stride=1, bias=False
         )
         self.avgpool_3d = nn.AvgPool3d(kernel_size=(1, 4, 4), stride=1)
-        self.conv3d_0c = Conv3DSamePadding(
+        self.conv3d_0c = custom_nn_layers.Conv3DSamePadding(
             100, 1, kernel_size=(1, 1, 1), stride=(1, 1, 1), bias=True
         )
         self.sigmoid = nn.Sigmoid()
@@ -122,7 +123,7 @@ class CompressionNetInference:
         batch_size is assumed to be 1 for now. But should work with larger.
         """
         with torch.no_grad():
-            _, label_probs = self.model(Tensor(patch))
+            _, label_probs = self.model(torch.Tensor(patch))
         return label_probs.detach().numpy()
 
     def predict_and_get_features(self, patch) -> tuple[np.ndarray, np.ndarray]:
@@ -131,7 +132,7 @@ class CompressionNetInference:
         batch_size is assumed to be 1 for now. But should work with larger.
         """
         with torch.no_grad():
-            features, label_probs = self.model(Tensor(patch))
+            features, label_probs = self.model(torch.Tensor(patch))
         return (
             features.detach().numpy().transpose(*self.features_transpose),
             label_probs.detach().numpy()[0],
