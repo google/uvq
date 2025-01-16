@@ -1,4 +1,4 @@
-import typing
+from typing import Iterator
 import os
 from collections import defaultdict
 
@@ -111,7 +111,7 @@ class AggregationNetInference:
         state_dict = torch.load(model_path, weights_only=True)
         return state_dict
 
-    def get_model_names_iterator(self) -> typing.Iterator[tuple[str, list[str]]]:
+    def get_model_names_iterator(self) -> Iterator[tuple[str, list[str]]]:
         trainset = "ytugc20s"
         all_trainset_subindex = ["0", "1", "2", "3", "4"]
         all_feature = [

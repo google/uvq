@@ -1,4 +1,4 @@
-import typing
+from typing import Union
 import os
 import numpy as np
 import pandas as pd
@@ -107,7 +107,7 @@ class ContentNetInference:
         return pd.read_csv(csv_path)
 
     def label_probabilities_to_text(
-        self, label_probs: typing.Union[list, np.ndarray], top_n: int = 1
+        self, label_probs: Union[list, np.ndarray], top_n: int = 1
     ) -> tuple[list, list, list]:
         """
         Converts the label probabilities to text.

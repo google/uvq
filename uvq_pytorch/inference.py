@@ -104,7 +104,7 @@ def setup_parser():
     parser.add_argument(
         "video_length",
         type=int,
-        help="Length of the video in frames",
+        help="Length of the video in seconds",
     )
     parser.add_argument(
         "--transpose",
