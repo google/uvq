@@ -53,7 +53,7 @@ The input files format is a line with the following fields:
 
 The `output_dir` will contain a csv file with the results for each model. For example,
 ```bash
-cat results/mos_ytugc20s_0_Gaming_1080P-0ce6_orig.mp4_orig.csv
+cat results/Gaming_1080P-0ce6_orig/Gaming_1080P-0ce6_orig_uvq.csv
 ```
 Gives:
 ```bash
