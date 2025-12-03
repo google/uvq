@@ -20,13 +20,13 @@ The corresponding data from the paper is available for download from: [YouTube U
 
 You must have [FFmpeg](http://www.ffmpeg.org/) installed and available on your path.
 
-The models and code require Python 3.6 (or greater) and [Tensorflow](https://www.tensorflow.org/install).
+The models and code require Python 3 (tested with 3.13.7) and [PyTorch](https://pytorch.org/).
 
 With virtualenv, you can install the requirements to a virtual environment:
 ```
 virtualenv venv
 source venv/bin/activate
-pip3 install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ### Predict Quality
@@ -37,55 +37,60 @@ You can grab some examples videos from the [YouTube UGC Dataset](https://media.w
 curl -o Gaming_1080P-0ce6_orig.mp4 https://storage.googleapis.com/ugc-dataset/vp9_compressed_videos/Gaming_1080P-0ce6_orig.mp4
 ```
 
-You can then run the example:
+You can then run inference using `uvq_inference.py`. Use the `--model_version`
+flag to select between UVQ 1.0 (`1.0`) and UVQ 1.5 (`1.5`).
+
+**UVQ 1.5 (Default)**
 
 ```bash
-mkdir -p results
-python3 uvq_main.py --input_files="Gaming_1080P-0ce6_orig,20,Gaming_1080P-0ce6_orig.mp4" --output_dir results --model_dir models
+python uvq_inference.py Gaming_1080P-0ce6_orig.mp4 --model_version 1.5
 ```
 
-#### Input file formatting
-The input files format is a line with the following fields:
+This will output a dictionary containing the UVQ 1.5 scores:
+```
+{'uvq1p5_score': 3.880362033843994, 'per_frame_scores': [4.021927833557129, 4.013788223266602, 4.110747814178467, 4.142043113708496, 4.1536993980407715, 4.147506237030029, 4.149798393249512, 4.149064064025879, 4.149083137512207, 4.133814811706543, 3.5636682510375977, 3.8045108318328857, 3.630220413208008, 3.6495614051818848, 3.6260201930999756, 3.6136975288391113, 3.5050578117370605, 3.7031033039093018, 3.676196575164795, 3.663726806640625], 'frame_indices': [...]}
+```
 
-`id,video_length,filepath`
+**UVQ 1.0**
 
-#### Results
-
-The `output_dir` will contain a csv file with the results for each model. For example,
 ```bash
-cat results/Gaming_1080P-0ce6_orig/Gaming_1080P-0ce6_orig_uvq.csv
+python uvq_inference.py Gaming_1080P-0ce6_orig.mp4 --model_version 1.0
 ```
-Gives:
+
+This will output a dictionary containing the UVQ 1.0 scores:
+```
+{'compression': 3.927565574645996, 'content': 3.948335313796997, 'distortion': 4.26719913482666, 'compression_content': 3.953589344024658, 'compression_distortion': 4.061836576461792, 'content_distortion': 4.070189666748047, 'compression_content_distortion': 4.060612201690674}
+```
+
+We provide multiple predicted scores, using different combinations of UVQ features.
+`compression_content_distortion` (combining three features) is our default score for Mean Opinion Score (MOS) prediction for UVQ 1.0.
+
+#### Optional Arguments
+
+*   `--transpose`: Transpose the video before processing (e.g., for portrait videos).
+*   `--output OUTPUT`: Path to save the output scores to a file. Scores will be saved in JSON format.
+*   `--device DEVICE`: Device to run inference on (e.g., `cpu` or `cuda`).
+*   `--fps FPS`: (UVQ 1.5 only) Frames per second to sample. Default is 1. Use -1 to sample all frames.
+
+
+## Performance
+
+With default `--fps 1` sampling, UVQ 1.5 can run faster than real-time on multi-core CPUs.
+CPU inference speed was measured on a virtual machine with an AMD EPYC 7B13 processor, using `Gaming_1080P-0ce6_orig.mp4` (20 seconds duration, 1080p resolution), sampling 1 frame per second (20 frames total).
+
+Example command:
 ```bash
-Gaming_1080P-0ce6,compression,3.927867603302002
-Gaming_1080P-0ce6,content,3.945391607284546
-Gaming_1080P-0ce6,distortion,4.267196607589722
-Gaming_1080P-0ce6,compression_content,3.9505696296691895
-Gaming_1080P-0ce6,compression_distortion,4.062019920349121
-Gaming_1080P-0ce6,content_distortion,4.067790699005127
-Gaming_1080P-0ce6,compression_content_distortion,4.058663845062256
+time taskset -c 0-3 python uvq_inference.py Gaming_1080P-0ce6_orig.mp4 --output pred.json
 ```
 
-We provide multiple predcited scores, using different combinations of UVQ features.
-`compression_content_distortion` (combining three features) is our default score for Mean Opinion Score (MOS) prediction.
+The wall-clock time varies by the number of cores assigned:
 
-The output features folder includes UVQ labels and raw features:
-```bash
-Gaming_1080P-0ce6_orig_feature_compression.binary
-Gaming_1080P-0ce6_orig_feature_content.binary
-Gaming_1080P-0ce6_orig_feature_distortion.binary
-Gaming_1080P-0ce6_orig_label_compression.csv
-Gaming_1080P-0ce6_orig_label_content.csv
-Gaming_1080P-0ce6_orig_label_distortion.csv
-```
-UVQ labels (.csv, each row corresponding to 1s chunk):<br />
-compression: 16 compression levels per row, corresponding to 4x4 subregions of the entire frame.<br />
-distortion: 26 distortion types defined in [KADID-10k](http://database.mmsp-kn.de/kadid-10k-database.html) for 2x2 subregions. The first element is the undefined type. <br /> 
-content: 3862 content labels defined in [YouTube-8M](https://research.google.com/youtube8m/).<br />
+*   8 cores (`taskset -c 0-7`): ~13.8 seconds
+*   4 cores (`taskset -c 0-3`): ~17.9 seconds
+*   2 cores (`taskset -c 0-1`): ~26.5 seconds
+*   1 core (`taskset -c 0-0`): ~43.6 seconds
 
-UVQ raw features (in binary):<br />
-25600 float numbers per 1s chunk.
-
+Your runtime may vary based on CPU architecture, clock speed, and system load.
 
 ## Contributors
 

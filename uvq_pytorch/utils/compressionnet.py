@@ -22,7 +22,7 @@ import torch
 
 from torch import nn
 
-from utils import custom_nn_layers
+from . import custom_nn_layers
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "checkpoint/compressionnet_pytorch_statedict.pt")
 
