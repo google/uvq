@@ -4,6 +4,8 @@ This repository contains checkpointed models of Google's Universal Video Quality
 UVQ is a no-reference perceptual video quality assessment model that is designed to work
 well on user-generated content, where there is no pristine reference.
 
+News: UVQ 1.5 is released with better generalizability, robustness, and efficiency !
+
 Read this blog post for an overview of UVQ:
 
 "[UVQ: Measuring YouTube's Perceptual Video Quality](https://ai.googleblog.com/2022/08/uvq-measuring-youtubes-perceptual-video.html)", Google AI Blog 2022
