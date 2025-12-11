@@ -23,7 +23,7 @@ import tempfile
 import numpy as np
 
 
-def extend_array(rgb, total_len):
+def _extend_array(rgb: bytearray, total_len: int) -> bytearray:
   """Extends the byte array (or truncates) to be total_len."""
   missing = total_len - len(rgb)
   if missing < 0:
@@ -33,8 +33,23 @@ def extend_array(rgb, total_len):
   return rgb
 
 
-def load_video_1p0(filepath, video_length, transpose=False, video_fps=5):
-  """Load input video for UVQ 1.0."""
+def load_video_1p0(
+    filepath: str,
+    video_length: int,
+    transpose: bool = False,
+    video_fps: int = 5,
+) -> tuple[np.ndarray, np.ndarray]:
+  """Load input video for UVQ 1.0.
+
+  Args:
+    filepath: Path to the video file.
+    video_length: Length of the video in seconds.
+    transpose: Whether to transpose the video.
+    video_fps: Frames per second to sample for inference.
+
+  Returns:
+    A tuple containing the loaded video and resized video as numpy arrays.
+  """
   video_height = 720
   video_width = 1280
   video_channel = 3
@@ -49,25 +64,18 @@ def load_video_1p0(filepath, video_length, transpose=False, video_fps=5):
   # Sample at constant frame rate, and save as RGB24 (RGBRGB...)
   fd, temp_filename = tempfile.mkstemp()
   fd_small, temp_filename_small = tempfile.mkstemp()
+  filter_complex = (
+      f"[0:v]{transpose_param}scale=w={video_width}:h={video_height}:"
+      f"flags=bicubic:force_original_aspect_ratio=1,"
+      f"pad={video_width}:{video_height}:(ow-iw)/2:(oh-ih)/2,"
+      f"format=rgb24,split=2[out1][tmp],"
+      f"[tmp]scale={input_width_content}:{input_height_content}:flags=bilinear[out2]"
+  )
   cmd = (
-      "ffmpeg  -i %s -filter_complex "
-      ' "[0:v]%sscale=w=%d:h=%d:flags=bicubic:force_original_aspect_ratio=1,'
-      'pad=%d:%d:(ow-iw)/2:(oh-ih)/2,format=rgb24,split=2[out1][tmp],[tmp]scale=%d:%d:flags=bilinear[out2]"'
-      " -map [out1] -r %d -f rawvideo -pix_fmt rgb24 -y %s"
-      " -map [out2] -r %d -f rawvideo -pix_fmt rgb24 -y %s"
-  ) % (
-      filepath,
-      transpose_param,
-      video_width,
-      video_height,
-      video_width,
-      video_height,
-      input_width_content,
-      input_height_content,
-      video_fps,
-      temp_filename,
-      video_fps,
-      temp_filename_small,
+      f"ffmpeg  -i {filepath} -filter_complex \"{filter_complex}\""
+      f" -map [out1] -r {video_fps} -f rawvideo -pix_fmt rgb24 -y {temp_filename}"
+      f" -map [out2] -r {video_fps} -f rawvideo -pix_fmt rgb24 -y"
+      f" {temp_filename_small}"
   )
 
   try:
@@ -107,8 +115,8 @@ def load_video_1p0(filepath, video_length, transpose=False, video_fps=5):
           video_length,
       )
 
-    rgb = extend_array(bytearray(rgb_file.read()), full_decode_size)
-    rgb_small = extend_array(
+    rgb = _extend_array(bytearray(rgb_file.read()), full_decode_size)
+    rgb_small = _extend_array(
         bytearray(rgb_file_small.read()),
         video_length
         * video_fps
@@ -149,14 +157,27 @@ def load_video_1p0(filepath, video_length, transpose=False, video_fps=5):
 
 
 def load_video_1p5(
-    filepath,
-    video_length,
-    transpose=False,
-    video_fps=1,
-    video_height=1080,
-    video_width=1920,
-):
-  """Load input video for UVQ 1.5."""
+    filepath: str,
+    video_length: int,
+    transpose: bool = False,
+    video_fps: int = 1,
+    video_height: int = 1080,
+    video_width: int = 1920,
+) -> tuple[np.ndarray, int]:
+  """Load input video for UVQ 1.5.
+
+  Args:
+    filepath: Path to the video file.
+    video_length: Length of the video in seconds.
+    transpose: Whether to transpose the video.
+    video_fps: Frames per second to sample for inference.
+    video_height: Height of the video to resize to.
+    video_width: Width of the video to resize to.
+
+  Returns:
+    A tuple containing the loaded video as a numpy array and the number of
+    real frames.
+  """
   video_channel = 3
   # Rotate video if requested
   if transpose:
@@ -167,16 +188,9 @@ def load_video_1p5(
   # Sample at constant frame rate, and save as RGB24 (RGBRGB...)
   fd, temp_filename = tempfile.mkstemp()
   cmd = (
-      "ffmpeg -i %s -vf"
-      " %sscale=w=%d:h=%d:flags=bicubic,format=rgb24 -r %d -f rawvideo"
-      " -pix_fmt rgb24 -y %s"
-  ) % (
-      filepath,
-      transpose_param,
-      video_width,
-      video_height,
-      video_fps,
-      temp_filename,
+      f"ffmpeg -i {filepath} -vf"
+      f" {transpose_param}scale=w={video_width}:h={video_height}:flags=bicubic,format=rgb24"
+      f" -r {video_fps} -f rawvideo -pix_fmt rgb24 -y {temp_filename}"
   )
 
   try:
@@ -214,7 +228,7 @@ def load_video_1p5(
           video_length,
       )
 
-    rgb = extend_array(bytearray(rgb_file.read()), full_decode_size)
+    rgb = _extend_array(bytearray(rgb_file.read()), full_decode_size)
     video = (
         np.reshape(
             np.frombuffer(rgb, "uint8"),

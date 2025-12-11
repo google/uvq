@@ -26,7 +26,6 @@ from typing import Callable, List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.checkpoint import checkpoint
 from torchvision.ops import SqueezeExcitation
 from torchvision.ops import StochasticDepth
 from torchvision.ops.misc import ConvNormActivation
@@ -35,8 +34,6 @@ from torchvision.ops.misc import ConvNormActivation
 contentnet_default_batchnorm2d = partial(
     nn.BatchNorm2d, eps=0.001, momentum=0.99
 )
-
-DEBUG = True
 
 
 class Interpolate(nn.Module):
@@ -253,7 +250,6 @@ class MBConvSamePadding(nn.Module):
 
   def forward(self, input):
     result = self.block(input)
-    # result = checkpoint(self.block, input)
     if self.use_res_connect:
       result = self.stochastic_depth(result)
       result += input
@@ -673,31 +669,20 @@ class InceptionMixedBlock(nn.Module):
 
   def forward(self, x):
     x = self.conv3d_1a(x)
-    # x = checkpoint(self.conv3d_1a, x)
     x = self.batch_norm_1a(x)
     x = self.relu(x)
     x = self.maxpool_2a(x)
     x = self.pre_2b2c(x)
-    # x = checkpoint(self.pre_2b2c, x)
     x = self.maxpool_3a(x)
     x = self.inception_mixed1_3b(x)
     x = self.inception_mixed2_3c(x)
-    # x = checkpoint(self.inception_mixed1_3b, x)
-    # x = checkpoint(self.inception_mixed2_3c, x)
     x = self.maxpool_4a(x)
     x = self.inception_mixed3_4b(x)
     x = self.inception_mixed4_4c(x)
     x = self.inception_mixed5_4d(x)
     x = self.inception_mixed6_4e(x)
     x = self.inception_mixed7_4f(x)
-    # x = checkpoint(self.inception_mixed3_4b, x)
-    # x = checkpoint(self.inception_mixed4_4c, x)
-    # x = checkpoint(self.inception_mixed5_4d, x)
-    # x = checkpoint(self.inception_mixed6_4e, x)
-    # x = checkpoint(self.inception_mixed7_4f, x)
     x = self.maxpool_5a(x)
     x = self.inception_mixed8_5b(x)
     x = self.inception_mixed9_5c(x)
-    # x = checkpoint(self.inception_mixed8_5b, x)
-    # x = checkpoint(self.inception_mixed9_5c, x)
     return x

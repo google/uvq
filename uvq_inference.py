@@ -21,12 +21,10 @@ import os
 import json
 from typing import Any
 
-from utils.probe import get_nb_frames
-from utils.probe import get_r_frame_rate
-from utils.probe import get_video_duration
+from utils import probe
 
-from uvq1p5_pytorch.utils.uvq1p5 import UVQ1p5
-from uvq_pytorch.utils.uvq1p0 import UVQ1p0
+from uvq1p5_pytorch.utils import uvq1p5
+from uvq_pytorch.utils import uvq1p0
 
 
 def main():
@@ -37,13 +35,13 @@ def main():
   transpose = args.transpose
   output_filepath = args.output
 
-  duration = get_video_duration(video_filename)
+  duration = probe.get_video_duration(video_filename)
   if duration is None:
     print(f"Could not get duration for {video_filename}, skipping.")
     return
   video_length = math.ceil(duration)
 
-  orig_fps = get_r_frame_rate(video_filename)
+  orig_fps = probe.get_r_frame_rate(video_filename)
   if orig_fps is None:
     print(f"Could not get frame rate for {video_filename}, skipping.")
     return
@@ -51,7 +49,7 @@ def main():
   fps = args.fps
   if fps == -1:
     fps = orig_fps
-    nb_frames = get_nb_frames(video_filename)
+    nb_frames = probe.get_nb_frames(video_filename)
     if nb_frames is not None and nb_frames > 0:
       video_length = math.ceil(nb_frames / fps)
     else:
@@ -65,7 +63,7 @@ def main():
     return
 
   if args.model_version == "1.5":
-    uvq_inference = UVQ1p5()
+    uvq_inference = uvq1p5.UVQ1p5()
     if args.device == "cuda":
       uvq_inference.cuda()
 
@@ -77,7 +75,7 @@ def main():
         orig_fps=orig_fps,
     )
   elif args.model_version == "1.0":
-    uvq_inference = UVQ1p0()
+    uvq_inference = uvq1p0.UVQ1p0()
     # UVQ1.0 infer doesn't support fps or padding args.
     # It uses its own video reader, which has fixed 5 fps sampling.
     # If fps is passed for 1.0, it will be ignored by 1.0 infer method.

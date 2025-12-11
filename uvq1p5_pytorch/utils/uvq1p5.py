@@ -21,45 +21,51 @@ limitations under the License.
 
 import os
 import sys
+from typing import Any
 
 import torch
 import torch.nn as nn
 import torchvision
 
-from .aggregationnet import AggregationNet
-from .contentnet import ContentNet
-from .distortionnet import DistortionNet
+from . import aggregationnet
+from . import contentnet
+from . import distortionnet
+
 sys.path.append(
     os.path.abspath(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'utils')
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), '..', '..', 'utils'
+        )
     )
 )
 import video_reader
 
 
 class UVQ1p5Core(nn.Module):
+  """UVQ 1.5 core model."""
 
   def __init__(
       self,
-      contentNet,
-      distortionNet,
-      aggregationNet,
+      content_net,
+      distortion_net,
+      aggregation_net,
   ):
     super(UVQ1p5Core, self).__init__()
-    self.contentNet = contentNet
-    self.distortionNet = distortionNet
-    self.aggregationNet = aggregationNet
+    self.content_net = content_net
+    self.distortion_net = distortion_net
+    self.aggregation_net = aggregation_net
 
   def forward(self, video):
-    content_features = self.contentNet(video)
-    distortion_features = self.distortionNet(video)
+    content_features = self.content_net(video)
+    distortion_features = self.distortion_net(video)
 
-    pred_dict = self.aggregationNet(content_features, distortion_features)
-    quality_pred = pred_dict["uvq_1p5_features"]
+    pred_dict = self.aggregation_net(content_features, distortion_features)
+    quality_pred = pred_dict['uvq_1p5_features']
     return quality_pred
 
 
 class UVQ1p5(nn.Module):
+  """UVQ 1.5 model."""
 
   def __init__(self, eval_mode=True, pretrained=True):
     super(UVQ1p5, self).__init__()
@@ -73,37 +79,56 @@ class UVQ1p5(nn.Module):
         os.path.dirname(__file__), "..", "checkpoints", "aggregation_net.pth"
     )
 
-    self.contentNet = ContentNet(
+    self.content_net = contentnet.ContentNet(
         model_path=model_path_content_net,
         eval_mode=eval_mode,
         pretrained=pretrained,
     )
-    self.distortionNet = DistortionNet(
+    self.distortion_net = distortionnet.DistortionNet(
         model_path=model_path_distortion_net,
         eval_mode=eval_mode,
         pretrained=pretrained,
     )
-    self.aggregationNet = AggregationNet(
+    self.aggregation_net = aggregationnet.AggregationNet(
         model_path=model_path_aggregation_net,
         eval_mode=eval_mode,
         pretrained=pretrained,
     )
 
     self.uvq1p5_core = UVQ1p5Core(
-        self.contentNet, self.distortionNet, self.aggregationNet
+        self.content_net, self.distortion_net, self.aggregation_net
     )
     if eval_mode:
       self.uvq1p5_core.eval()
 
-  def infer(self, video_filename, video_length, transpose, fps=1, orig_fps=None):
-    video_1080p, num_real_frames = self.load_video(
+  def infer(
+      self,
+      video_filename: str,
+      video_length: int,
+      transpose: bool,
+      fps: int = 1,
+      orig_fps: float | None = None,
+  ) -> dict[str, Any]:
+    """Runs UVQ 1.5 inference on a video file.
+
+    Args:
+      video_filename: Path to the video file.
+      video_length: Length of the video in seconds.
+      transpose: Whether to transpose the video.
+      fps: Frames per second to sample for inference.
+      orig_fps: Original frames per second of the video, used for frame index
+        calculation.
+
+    Returns:
+      A dictionary containing the overall UVQ 1.5 score, per-frame scores,
+      and frame indices.
+    """
+    video_1080p, _ = self.load_video(
         video_filename,
         video_length,
         transpose,
         fps=fps,
     )
-    # print("video_1080p.shape: ", video_1080p.shape)
-    # video_1080p is shape (video_length, fps, 3, H, W)
     num_seconds, read_fps, c, h, w = video_1080p.shape
     # reshape to (num_seconds * fps, 1, 3, h, w) to process all frames
     num_frames = num_seconds * read_fps
@@ -138,7 +163,25 @@ class UVQ1p5(nn.Module):
         "frame_indices": frame_indices,
     }
 
-  def load_video(self, video_filename, video_length, transpose=False, fps=1):
+  def load_video(
+      self,
+      video_filename: str,
+      video_length: int,
+      transpose: bool = False,
+      fps: int = 1,
+  ) -> tuple[torch.Tensor, int]:
+    """Loads and preprocesses a video for UVQ 1.5 inference.
+
+    Args:
+      video_filename: Path to the video file.
+      video_length: Length of the video in seconds.
+      transpose: Whether to transpose the video.
+      fps: Frames per second to sample.
+
+    Returns:
+      A tuple containing the loaded video as a torch tensor and the number of
+      real frames.
+    """
     video, num_real_frames = video_reader.load_video_1p5(
         video_filename,
         video_length,

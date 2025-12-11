@@ -19,7 +19,7 @@ import math
 import subprocess
 
 
-def get_dimensions(video_path):
+def get_dimensions(video_path) -> tuple[int, int] | None:
   """Get video width and height using ffprobe."""
   cmd = [
       "ffprobe",
@@ -51,7 +51,7 @@ def get_dimensions(video_path):
     return None
 
 
-def get_nb_frames(video_path):
+def get_nb_frames(video_path) -> int | None:
   """Get video nb_frames using ffprobe."""
   cmd = [
       "ffprobe",
@@ -83,7 +83,7 @@ def get_nb_frames(video_path):
     return None
 
 
-def get_r_frame_rate(video_path):
+def get_r_frame_rate(video_path) -> int | None:
   """Get video r_frame_rate using ffprobe."""
   cmd = [
       "ffprobe",
@@ -121,7 +121,7 @@ def get_r_frame_rate(video_path):
     return None
 
 
-def get_video_duration(video_path):
+def get_video_duration(video_path) -> float | None:
   """Get video duration in seconds using ffprobe."""
   cmd = [
       "ffprobe",
