@@ -20,6 +20,7 @@ import math
 import os
 import json
 from typing import Any
+import tqdm
 
 from utils import probe
 
@@ -27,21 +28,113 @@ from uvq1p5_pytorch.utils import uvq1p5
 from uvq_pytorch.utils import uvq1p0
 
 
-def main():
-  parser = setup_parser()
-  args = parser.parse_args()
+def run_batch_inference(args):
+  """Runs inference on a list of videos."""
+  if not args.output:
+    print("Error: --output must be specified when input is a .txt file list.")
+    return
 
-  video_filename = args.video_filename
+  if args.model_version == "1.5":
+    model = uvq1p5.UVQ1p5()
+  elif args.model_version == "1.0":
+    model = uvq1p0.UVQ1p0()
+    print("Running UVQ 1.0 batch inference. FPS argument is ignored (uses 5fps).")
+  else:
+    return  # Should not happen
+  if args.device == "cuda":
+    model.cuda()
+
+  try:
+    with open(args.input, "r") as f:
+      video_paths = [line.strip() for line in f if line.strip()]
+  except FileNotFoundError:
+    print(f"Error: Input file list not found at {args.input}")
+    return
+
+  results_to_write = []
+  for video_path in tqdm.tqdm(video_paths, desc="Processing videos"):
+    try:
+      transpose_flag = False
+      dimensions = probe.get_dimensions(video_path, args.ffprobe_path)
+      if dimensions and dimensions[0] < dimensions[1]:
+        print(
+            f"Portrait video {video_path} detected, setting transpose=True for"
+            " this video."
+        )
+        transpose_flag = True
+
+      duration = probe.get_video_duration(video_path, args.ffprobe_path)
+      orig_fps = probe.get_r_frame_rate(video_path, args.ffprobe_path)
+      nb_frames = probe.get_nb_frames(video_path, args.ffprobe_path)
+
+      video_length = 0
+      if duration:
+        video_length = math.ceil(duration)
+      elif orig_fps and nb_frames:
+        video_length = math.ceil(nb_frames / orig_fps)
+
+      if video_length == 0:
+        print(f"Could not determine video length for {video_path}, skipping.")
+        continue
+
+      fps_to_use = args.fps
+      if args.model_version == "1.5" and fps_to_use == -1:
+        if orig_fps:
+          fps_to_use = orig_fps
+        else:
+          print(
+              f"Cannot determine r_frame_rate for {video_path} with fps=-1,"
+              " skipping."
+          )
+          continue
+
+      if args.model_version == "1.5":
+        results = model.infer(
+            video_path,
+            video_length,
+            transpose_flag,
+            fps=fps_to_use,
+            orig_fps=orig_fps,
+            ffmpeg_path=args.ffmpeg_path,
+        )
+        score = results["uvq1p5_score"]
+      elif args.model_version == "1.0":
+        results = model.infer(
+            video_path,
+            video_length,
+            transpose_flag,
+        )
+        score = float(results["compression_content_distortion"])
+      results_to_write.append(f"{os.path.basename(video_path)},{score}")
+    except Exception as e:
+      print(f"Error processing {video_path}: {e}")
+
+  # Write results
+  try:
+    output_dir = os.path.dirname(args.output)
+    if output_dir and not os.path.exists(output_dir):
+      os.makedirs(output_dir)
+    with open(args.output, "w") as f_out:
+      for line in results_to_write:
+        f_out.write(line + "\n")
+    print(f"Batch inference complete. Results saved to {args.output}")
+  except IOError as e:
+    print(f"Error writing to output file {args.output}: {e}")
+
+
+def run_single_inference(args):
+  """Runs inference on a single video."""
+  video_filename = args.input
   transpose = args.transpose
   output_filepath = args.output
 
-  duration = probe.get_video_duration(video_filename)
+  duration = probe.get_video_duration(video_filename, args.ffprobe_path)
   if duration is None:
     print(f"Could not get duration for {video_filename}, skipping.")
     return
   video_length = math.ceil(duration)
 
-  orig_fps = probe.get_r_frame_rate(video_filename)
+  orig_fps = probe.get_r_frame_rate(video_filename, args.ffprobe_path)
   if orig_fps is None:
     print(f"Could not get frame rate for {video_filename}, skipping.")
     return
@@ -49,7 +142,7 @@ def main():
   fps = args.fps
   if fps == -1:
     fps = orig_fps
-    nb_frames = probe.get_nb_frames(video_filename)
+    nb_frames = probe.get_nb_frames(video_filename, args.ffprobe_path)
     if nb_frames is not None and nb_frames > 0:
       video_length = math.ceil(nb_frames / fps)
     else:
@@ -73,6 +166,7 @@ def main():
         transpose,
         fps=fps,
         orig_fps=orig_fps,
+        ffmpeg_path=args.ffmpeg_path,
     )
   elif args.model_version == "1.0":
     uvq_inference = uvq1p0.UVQ1p0()
@@ -85,14 +179,32 @@ def main():
         video_length,
         transpose,
     )
+    results = {k: float(v) for k, v in results.items()}
   else:
     print(f"Unknown model version: {args.model_version}")
     return
 
-  print(results)
+  results["video_name"] = video_filename
+  if args.output_all_stats:
+    print(json.dumps(results))
+  else:
+    if args.model_version == "1.5":
+      print(results["uvq1p5_score"])
+    elif args.model_version == "1.0":
+      print(results["compression_content_distortion"])
 
   if output_filepath != "":
     write_dict_to_file(results, output_filepath)
+
+
+def main():
+  parser = setup_parser()
+  args = parser.parse_args()
+
+  if args.input.endswith(".txt"):
+    run_batch_inference(args)
+  else:
+    run_single_inference(args)
 
 
 def write_dict_to_file(d: dict[str, Any], output_filepath: str) -> None:
@@ -115,9 +227,12 @@ def setup_parser():
   """Sets up the argument parser for the UVQ inference script."""
   parser = argparse.ArgumentParser()
   parser.add_argument(
-      "video_filename",
+      "input",
       type=str,
-      help="Path to the video file",
+      help=(
+          "Path to a single video file or a .txt file with one video path per"
+          " line."
+      ),
   )
   parser.add_argument(
       "--model_version",
@@ -134,7 +249,7 @@ def setup_parser():
   parser.add_argument(
       "--output",
       type=str,
-      help="Path to the output file",
+      help="Path to the output file. Required if input is a .txt list.",
       default="",
       required=False,
   )
@@ -150,6 +265,23 @@ def setup_parser():
       default=1,
       help="Frames per second to sample for UVQ1.5. -1 to sample all frames."
       " Ignored for UVQ1.0.",
+  )
+  parser.add_argument(
+      "--output_all_stats",
+      action="store_true",
+      help="If specified, print all stats in JSON format to stdout.",
+  )
+  parser.add_argument(
+      "--ffmpeg_path",
+      type=str,
+      default="ffmpeg",
+      help="Path to ffmpeg executable.",
+  )
+  parser.add_argument(
+      "--ffprobe_path",
+      type=str,
+      default="ffprobe",
+      help="Path to ffprobe executable.",
   )
   return parser
 

@@ -4,7 +4,7 @@ This repository contains checkpointed models of Google's Universal Video Quality
 UVQ is a no-reference perceptual video quality assessment model that is designed to work
 well on user-generated content, where there is no pristine reference.
 
-News: UVQ 1.5 is released with better generalizability, robustness, and efficiency !
+### News: UVQ 1.5 is released with better generalizability, robustness, and efficiency !
 
 Read this blog post for an overview of UVQ:
 
@@ -48,9 +48,17 @@ flag to select between UVQ 1.0 (`1.0`) and UVQ 1.5 (`1.5`).
 python uvq_inference.py Gaming_1080P-0ce6_orig.mp4 --model_version 1.5
 ```
 
-This will output a dictionary containing the UVQ 1.5 scores:
+This will output the UVQ 1.5 score:
 ```
-{'uvq1p5_score': 3.880362033843994, 'per_frame_scores': [4.021927833557129, 4.013788223266602, 4.110747814178467, 4.142043113708496, 4.1536993980407715, 4.147506237030029, 4.149798393249512, 4.149064064025879, 4.149083137512207, 4.133814811706543, 3.5636682510375977, 3.8045108318328857, 3.630220413208008, 3.6495614051818848, 3.6260201930999756, 3.6136975288391113, 3.5050578117370605, 3.7031033039093018, 3.676196575164795, 3.663726806640625], 'frame_indices': [...]}
+3.880362033843994
+```
+
+To see all statistics in JSON format, use the `--output_all_stats` flag:
+```bash
+python uvq_inference.py Gaming_1080P-0ce6_orig.mp4 --model_version 1.5 --output_all_stats
+```
+```json
+{"uvq1p5_score": 3.880362033843994, "per_frame_scores": [4.021927833557129, 4.013788223266602, 4.110747814178467, 4.142043113708496, 4.1536993980407715, 4.147506237030029, 4.149798393249512, 4.149064064025879, 4.149083137512207, 4.133814811706543, 3.5636682510375977, 3.8045108318328857, 3.630220413208008, 3.6495614051818848, 3.6260201930999756, 3.6136975288391113, 3.5050578117370605, 3.7031033039093018, 3.676196575164795, 3.663726806640625], "frame_indices": [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360, 390, 420, 450, 480, 510, 540, 570]}
 ```
 
 **UVQ 1.0**
@@ -59,13 +67,43 @@ This will output a dictionary containing the UVQ 1.5 scores:
 python uvq_inference.py Gaming_1080P-0ce6_orig.mp4 --model_version 1.0
 ```
 
-This will output a dictionary containing the UVQ 1.0 scores:
+This will output the UVQ 1.0 score:
 ```
-{'compression': 3.927565574645996, 'content': 3.948335313796997, 'distortion': 4.26719913482666, 'compression_content': 3.953589344024658, 'compression_distortion': 4.061836576461792, 'content_distortion': 4.070189666748047, 'compression_content_distortion': 4.060612201690674}
+4.060612201690674
+```
+
+To see all statistics in JSON format, use the `--output_all_stats` flag:
+```bash
+python uvq_inference.py Gaming_1080P-0ce6_orig.mp4 --model_version 1.0 --output_all_stats
+```
+```json
+{"compression": 3.9275655269622805, "content": 3.9483354091644287, "distortion": 4.26719913482666, "compression_content": 3.9535892486572264, "compression_distortion": 4.061836576461792, "content_distortion": 4.070189571380615, "compression_content_distortion": 4.0606121063232425}
 ```
 
 We provide multiple predicted scores, using different combinations of UVQ features.
 `compression_content_distortion` (combining three features) is our default score for Mean Opinion Score (MOS) prediction for UVQ 1.0.
+
+### Batch Inference
+
+If you provide a path to a `.txt` file instead of a video file to the `input` argument, `uvq_inference.py` will run in batch mode.
+The `.txt` file should contain one video path per line.
+In batch mode, you must specify an output file using `--output`, which will be populated with `video_basename,score` for each video.
+The `--output_all_stats` flag is ignored in batch mode.
+
+For example, if `video_list.txt` contains:
+```
+Gaming_1080P-0ce6_orig.mp4
+```
+
+You can run:
+```bash
+python uvq_inference.py video_list.txt --model_version 1.5 --output batch_results.txt
+```
+
+This will create `batch_results.txt` with content like:
+```
+Gaming_1080P-0ce6_orig.mp4,3.880362033843994
+```
 
 #### Optional Arguments
 
@@ -73,6 +111,9 @@ We provide multiple predicted scores, using different combinations of UVQ featur
 *   `--output OUTPUT`: Path to save the output scores to a file. Scores will be saved in JSON format.
 *   `--device DEVICE`: Device to run inference on (e.g., `cpu` or `cuda`).
 *   `--fps FPS`: (UVQ 1.5 only) Frames per second to sample. Default is 1. Use -1 to sample all frames.
+*   `--output_all_stats`: If specified, print all stats in JSON format to stdout.
+*   `--ffmpeg_path`: Path to FFmpeg executable (default: `ffmpeg`).
+*   `--ffprobe_path`: Path to FFprobe executable (default: `ffprobe`).
 
 
 ## Performance

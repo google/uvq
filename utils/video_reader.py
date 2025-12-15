@@ -38,6 +38,7 @@ def load_video_1p0(
     video_length: int,
     transpose: bool = False,
     video_fps: int = 5,
+    ffmpeg_path: str = "ffmpeg",
 ) -> tuple[np.ndarray, np.ndarray]:
   """Load input video for UVQ 1.0.
 
@@ -72,7 +73,7 @@ def load_video_1p0(
       f"[tmp]scale={input_width_content}:{input_height_content}:flags=bilinear[out2]"
   )
   cmd = (
-      f"ffmpeg  -i {filepath} -filter_complex \"{filter_complex}\""
+      f"{ffmpeg_path}  -i {filepath} -filter_complex \"{filter_complex}\""
       f" -map [out1] -r {video_fps} -f rawvideo -pix_fmt rgb24 -y {temp_filename}"
       f" -map [out2] -r {video_fps} -f rawvideo -pix_fmt rgb24 -y"
       f" {temp_filename_small}"
@@ -163,6 +164,7 @@ def load_video_1p5(
     video_fps: int = 1,
     video_height: int = 1080,
     video_width: int = 1920,
+    ffmpeg_path: str = "ffmpeg",
 ) -> tuple[np.ndarray, int]:
   """Load input video for UVQ 1.5.
 
@@ -188,7 +190,7 @@ def load_video_1p5(
   # Sample at constant frame rate, and save as RGB24 (RGBRGB...)
   fd, temp_filename = tempfile.mkstemp()
   cmd = (
-      f"ffmpeg -i {filepath} -vf"
+      f"{ffmpeg_path} -i {filepath} -vf"
       f" {transpose_param}scale=w={video_width}:h={video_height}:flags=bicubic,format=rgb24"
       f" -r {video_fps} -f rawvideo -pix_fmt rgb24 -y {temp_filename}"
   )
