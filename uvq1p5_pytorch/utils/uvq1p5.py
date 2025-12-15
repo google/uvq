@@ -108,6 +108,7 @@ class UVQ1p5(nn.Module):
       transpose: bool,
       fps: int = 1,
       orig_fps: float | None = None,
+      ffmpeg_path: str = "ffmpeg",
   ) -> dict[str, Any]:
     """Runs UVQ 1.5 inference on a video file.
 
@@ -128,6 +129,7 @@ class UVQ1p5(nn.Module):
         video_length,
         transpose,
         fps=fps,
+        ffmpeg_path=ffmpeg_path,
     )
     num_seconds, read_fps, c, h, w = video_1080p.shape
     # reshape to (num_seconds * fps, 1, 3, h, w) to process all frames
@@ -169,6 +171,7 @@ class UVQ1p5(nn.Module):
       video_length: int,
       transpose: bool = False,
       fps: int = 1,
+      ffmpeg_path: str = "ffmpeg",
   ) -> tuple[torch.Tensor, int]:
     """Loads and preprocesses a video for UVQ 1.5 inference.
 
@@ -189,6 +192,7 @@ class UVQ1p5(nn.Module):
         video_fps=fps,
         video_height=1080,
         video_width=1920,
+        ffmpeg_path=ffmpeg_path,
     )
     video = video.transpose(0, 1, 4, 2, 3)
     return torch.from_numpy(video).float(), num_real_frames
