@@ -89,6 +89,7 @@ If you provide a path to a `.txt` file instead of a video file to the `input` ar
 The `.txt` file should contain one video path per line.
 In batch mode, you must specify an output file using `--output`, which will be populated with `video_basename,score` for each video.
 The `--output_all_stats` flag is ignored in batch mode.
+If you need all statistics in batch mode, use `--batch_json_output` to write the results as json array with the complete statistics and a `video_name` key to identify the source video.
 
 For example, if `video_list.txt` contains:
 ```
@@ -105,12 +106,30 @@ This will create `batch_results.txt` with content like:
 Gaming_1080P-0ce6_orig.mp4,3.880362033843994
 ```
 
+To obtain all statistics in JSON format, use the `--batch_json_output` flag:
+```bash
+python uvq_inference.py video_list.txt --model_version 1.5 --batch_json_output --output batch_results.txt
+```
+
+This will create `batch_results.txt` with content like:
+```json
+[
+  {
+    "uvq1p5_score": 3.880362033843994,
+    "per_frame_scores": [4.021927833557129, 4.013788223266602, 4.110747814178467, 4.142043113708496, 4.1536993980407715, 4.147506237030029, 4.149798393249512, 4.149064064025879, 4.149083137512207, 4.133814811706543, 3.5636682510375977, 3.8045108318328857, 3.630220413208008, 3.6495614051818848, 3.6260201930999756, 3.6136975288391113, 3.5050578117370605, 3.7031033039093018, 3.676196575164795, 3.663726806640625],
+    "frame_indices": [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360, 390, 420, 450, 480, 510, 540, 570],
+    "video_name": "Gaming_1080P-0ce6_orig.mp4"
+  }
+]
+```
+
 #### Optional Arguments
 
 *   `--transpose`: Transpose the video before processing (e.g., for portrait videos).
 *   `--output OUTPUT`: Path to save the output scores to a file. Scores will be saved in JSON format.
 *   `--device DEVICE`: Device to run inference on (e.g., `cpu` or `cuda`).
 *   `--fps FPS`: (UVQ 1.5 only) Frames per second to sample. Default is 1. Use -1 to sample all frames.
+*   `--batch_json_output`: If specified, outputs batch results in JSON format including per frame scores instead of just overall mean score.
 *   `--output_all_stats`: If specified, print all stats in JSON format to stdout.
 *   `--ffmpeg_path`: Path to FFmpeg executable (default: `ffmpeg`).
 *   `--ffprobe_path`: Path to FFprobe executable (default: `ffprobe`).
