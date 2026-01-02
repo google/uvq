@@ -96,6 +96,7 @@ def run_batch_inference(args):
             fps=fps_to_use,
             orig_fps=orig_fps,
             ffmpeg_path=args.ffmpeg_path,
+            chunk_size_frames=args.chunk_size_frames,
         )
         score = results["uvq1p5_score"]
       elif args.model_version == "1.0":
@@ -176,6 +177,7 @@ def run_single_inference(args):
         fps=fps,
         orig_fps=orig_fps,
         ffmpeg_path=args.ffmpeg_path,
+        chunk_size_frames=args.chunk_size_frames,
     )
   elif args.model_version == "1.0":
     uvq_inference = uvq1p0.UVQ1p0()
@@ -274,6 +276,12 @@ def setup_parser():
       default=1,
       help="Frames per second to sample for UVQ1.5. -1 to sample all frames."
       " Ignored for UVQ1.0.",
+  )
+  parser.add_argument(
+      "--chunk_size_frames",
+      type=int,
+      default=16,
+      help="Number of frames to process in each chunk during inference.",
   )
   parser.add_argument(
       "--batch_json_output",

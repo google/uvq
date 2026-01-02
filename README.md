@@ -129,6 +129,7 @@ This will create `batch_results.txt` with content like:
 *   `--output OUTPUT`: Path to save the output scores to a file. Scores will be saved in JSON format.
 *   `--device DEVICE`: Device to run inference on (e.g., `cpu` or `cuda`).
 *   `--fps FPS`: (UVQ 1.5 only) Frames per second to sample. Default is 1. Use -1 to sample all frames.
+*   `--chunk_size_frames FRAMES`: (UVQ 1.5 only) Frames to process at once during inference. If you run out of memory reduce this number. Default is 16.
 *   `--batch_json_output`: If specified, outputs batch results in JSON format including per frame scores instead of just overall mean score.
 *   `--output_all_stats`: If specified, print all stats in JSON format to stdout.
 *   `--ffmpeg_path`: Path to FFmpeg executable (default: `ffmpeg`).
