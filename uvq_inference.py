@@ -96,6 +96,7 @@ def run_batch_inference(args):
             fps=fps_to_use,
             orig_fps=orig_fps,
             ffmpeg_path=args.ffmpeg_path,
+            chunk_size_frames=args.chunk_size_frames,
         )
         score = results["uvq1p5_score"]
       elif args.model_version == "1.0":
@@ -105,7 +106,12 @@ def run_batch_inference(args):
             transpose_flag,
         )
         score = float(results["compression_content_distortion"])
-      results_to_write.append(f"{os.path.basename(video_path)},{score}")
+      
+      if args.batch_json_output:
+        results["video_name"] = os.path.basename(video_path)
+        results_to_write.append(results)
+      else:
+        results_to_write.append(f"{os.path.basename(video_path)},{score}")
     except Exception as e:
       print(f"Error processing {video_path}: {e}")
 
@@ -114,9 +120,13 @@ def run_batch_inference(args):
     output_dir = os.path.dirname(args.output)
     if output_dir and not os.path.exists(output_dir):
       os.makedirs(output_dir)
-    with open(args.output, "w") as f_out:
-      for line in results_to_write:
-        f_out.write(line + "\n")
+    
+    if args.batch_json_output:
+      write_dict_to_file(results_to_write, args.output)
+    else:
+      with open(args.output, "w") as f_out:
+        for line in results_to_write:
+          f_out.write(line + "\n")
     print(f"Batch inference complete. Results saved to {args.output}")
   except IOError as e:
     print(f"Error writing to output file {args.output}: {e}")
@@ -167,6 +177,7 @@ def run_single_inference(args):
         fps=fps,
         orig_fps=orig_fps,
         ffmpeg_path=args.ffmpeg_path,
+        chunk_size_frames=args.chunk_size_frames,
     )
   elif args.model_version == "1.0":
     uvq_inference = uvq1p0.UVQ1p0()
@@ -265,6 +276,18 @@ def setup_parser():
       default=1,
       help="Frames per second to sample for UVQ1.5. -1 to sample all frames."
       " Ignored for UVQ1.0.",
+  )
+  parser.add_argument(
+      "--chunk_size_frames",
+      type=int,
+      default=16,
+      help="Number of frames to process in each chunk during inference.",
+  )
+  parser.add_argument(
+      "--batch_json_output",
+      action="store_true",
+      help="If specified, outputs batch results in JSON format including per " \
+      "frame scores instead of just overall mean score.",
   )
   parser.add_argument(
       "--output_all_stats",
