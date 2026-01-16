@@ -39,7 +39,7 @@ def get_dimensions(
     result = subprocess.run(
         cmd,
         stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        stderr=subprocess.PIPE,
         check=True,
         text=True,
     )
@@ -72,7 +72,7 @@ def get_nb_frames(video_path, ffprobe_path="ffprobe") -> int | None:
     result = subprocess.run(
         cmd,
         stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        stderr=subprocess.PIPE,
         check=True,
         text=True,
     )
@@ -103,7 +103,7 @@ def get_r_frame_rate(video_path, ffprobe_path="ffprobe") -> int | None:
     result = subprocess.run(
         cmd,
         stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        stderr=subprocess.PIPE,
         check=True,
         text=True,
     )
@@ -137,7 +137,7 @@ def get_video_duration(video_path, ffprobe_path="ffprobe") -> float | None:
   ]
   try:
     result = subprocess.run(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
     )
     duration = float(result.stdout)
     return duration
