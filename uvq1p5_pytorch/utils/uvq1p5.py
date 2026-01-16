@@ -109,6 +109,7 @@ class UVQ1p5(nn.Module):
       fps: int = 1,
       orig_fps: float | None = None,
       ffmpeg_path: str = "ffmpeg",
+      chunk_size_frames: int = 16,
   ) -> dict[str, Any]:
     """Runs UVQ 1.5 inference on a video file.
 
@@ -119,38 +120,40 @@ class UVQ1p5(nn.Module):
       fps: Frames per second to sample for inference.
       orig_fps: Original frames per second of the video, used for frame index
         calculation.
+      chunk_size_frames: Number of frames to process in each chunk during inference.
 
     Returns:
       A dictionary containing the overall UVQ 1.5 score, per-frame scores,
       and frame indices.
     """
-    video_1080p, _ = self.load_video(
+    
+    predictions = []
+    
+    # Use generator to process video in chunks
+    for video_chunk, _ in video_reader.yield_video_1p5_chunks(
         video_filename,
         video_length,
         transpose,
-        fps=fps,
+        video_fps=fps,
         ffmpeg_path=ffmpeg_path,
-    )
-    num_seconds, read_fps, c, h, w = video_1080p.shape
-    # reshape to (num_seconds * fps, 1, 3, h, w) to process all frames
-    num_frames = num_seconds * read_fps
-    video_1080p = video_1080p.reshape(num_frames, 1, c, h, w)
+        chunk_size_frames=chunk_size_frames
+    ):
 
-    batch_size = 24
-    if num_frames > batch_size: # if video is longer than batch size, run inference in batches to avoid OOM
-      predictions = []
-      with torch.inference_mode():
-        for i in range(0, num_frames, batch_size):
-          batch = video_1080p[i : i + batch_size]
-          prediction_batch = self.uvq1p5_core(batch)
-          predictions.append(prediction_batch)
-      prediction = torch.cat(predictions, dim=0)
-    else:
-      with torch.inference_mode():
-        prediction = self.uvq1p5_core(video_1080p)
+        video_chunk_torch = torch.from_numpy(video_chunk).float()
+        video_chunk_torch = video_chunk_torch.permute(0, 1, 4, 2, 3)
+        
+        with torch.inference_mode():
+            batch = video_chunk_torch.to(next(self.parameters()).device)
+            prediction_batch = self.uvq1p5_core(batch)
+            predictions.append(prediction_batch)
+            
+    if not predictions:
+         raise ValueError(f"No frames were read from {video_filename}")
+
+    prediction = torch.cat(predictions, dim=0)
 
     video_score = torch.mean(prediction).item()
-    frame_scores = prediction.numpy().flatten().tolist()
+    frame_scores = prediction.cpu().numpy().flatten().tolist()
 
     if orig_fps:
       frame_indices = [

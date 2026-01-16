@@ -157,7 +157,7 @@ def load_video_1p0(
   return video, video_resized
 
 
-def load_video_1p5(
+def yield_video_1p5_chunks(
     filepath: str,
     video_length: int,
     transpose: bool = False,
@@ -165,8 +165,9 @@ def load_video_1p5(
     video_height: int = 1080,
     video_width: int = 1920,
     ffmpeg_path: str = "ffmpeg",
-) -> tuple[np.ndarray, int]:
-  """Load input video for UVQ 1.5.
+    chunk_size_frames: int = 16,
+):
+  """Yields chunks of the video as numpy arrays.
 
   Args:
     filepath: Path to the video file.
@@ -175,10 +176,12 @@ def load_video_1p5(
     video_fps: Frames per second to sample for inference.
     video_height: Height of the video to resize to.
     video_width: Width of the video to resize to.
-
-  Returns:
-    A tuple containing the loaded video as a numpy array and the number of
-    real frames.
+    chunk_size_frames: Number of frames to yield per chunk.
+  
+  Yields:
+    A tuple containing:
+      - A chunk of the loaded video as a numpy array (batch, 1, h, w, c).
+      - The number of real frames in the entire video (only available once determined).
   """
   video_channel = 3
   # Rotate video if requested
@@ -208,41 +211,114 @@ def load_video_1p5(
     raise error
 
   # For video, the entire video is divided into 1s chunks in 5 fps
-  with open(temp_filename, "rb") as rgb_file:
-    single_frame_size = video_width * video_height * video_channel
-    full_decode_size = video_length * video_fps * single_frame_size
-    rgb_file.seek(0, 2)
-    rgb_file_size = rgb_file.tell()
-    rgb_file.seek(0)
-    num_real_frames = rgb_file_size // single_frame_size
-    assert rgb_file_size >= single_frame_size, (
-        f"Decoding failed to output a single frame: {rgb_file_size} <"
-        f" {single_frame_size}"
-    )
-    if rgb_file_size < full_decode_size:
-      logging.warning(
-          "Decoding may be truncated: %d bytes (%d frames) < %d bytes (%d"
-          " frames), or video length (%ds) may be too incorrect",
-          rgb_file_size,
-          rgb_file_size / single_frame_size,
-          full_decode_size,
-          full_decode_size / single_frame_size,
-          video_length,
+  try:
+    with open(temp_filename, "rb") as rgb_file:
+      single_frame_size = video_width * video_height * video_channel
+      full_decode_size = video_length * video_fps * single_frame_size
+      rgb_file.seek(0, 2)
+      rgb_file_size = rgb_file.tell()
+      rgb_file.seek(0)
+      num_real_frames = rgb_file_size // single_frame_size
+      assert rgb_file_size >= single_frame_size, (
+          f"Decoding failed to output a single frame: {rgb_file_size} <"
+          f" {single_frame_size}"
       )
-
-    rgb = _extend_array(bytearray(rgb_file.read()), full_decode_size)
-    video = (
-        np.reshape(
-            np.frombuffer(rgb, "uint8"),
-            (video_length, int(video_fps), video_height, video_width, 3),
+      
+      if rgb_file_size < full_decode_size:
+        logging.warning(
+            "Decoding may be truncated: %d bytes (%d frames) < %d bytes (%d"
+            " frames), or video length (%ds) may be too incorrect",
+            rgb_file_size,
+            rgb_file_size / single_frame_size,
+            full_decode_size,
+            full_decode_size / single_frame_size,
+            video_length,
         )
-        / 255.0
-        - 0.5
-    ) * 2
 
-  # Delete temp files
-  os.close(fd)
-  os.remove(temp_filename)
-  logging.info("Load %s done successfully.", filepath)
+      chunk_size_bytes = chunk_size_frames * single_frame_size
+      
+      # Read and yield chunks
+      read_frames = 0
+      while read_frames < num_real_frames:
+        chunk_bytes = rgb_file.read(chunk_size_bytes)
+        if not chunk_bytes:
+          break
+          
+        # Handle partial chunks (e.g. end of file)
+        # We read len(chunk_bytes). We simply divide by single_frame_size.
+        # If there are leftovers < single_frame_size (partial frame), we ignore them.
+        current_chunk_frames = len(chunk_bytes) // single_frame_size
+        
+        if current_chunk_frames == 0:
+           break
 
+        # Truncate to valid frames bytes
+        valid_bytes = current_chunk_frames * single_frame_size
+        if len(chunk_bytes) > valid_bytes:
+            logging.warning("Read partial frame at end of file, truncating.")
+            chunk_bytes = chunk_bytes[:valid_bytes]
+
+        if current_chunk_frames == 0:
+           break
+
+        video_chunk = (
+            np.reshape(
+                np.frombuffer(chunk_bytes, "uint8"),
+                (current_chunk_frames, 1, video_height, video_width, 3),
+            ).astype(np.float32)
+            / 255.0
+            - 0.5
+        ) * 2
+        
+        yield video_chunk, num_real_frames
+        read_frames += current_chunk_frames
+
+  finally:
+    # Delete temp files
+    os.close(fd)
+    if os.path.exists(temp_filename):
+      os.remove(temp_filename)
+    logging.info("Load %s done successfully.", filepath)
+
+
+def load_video_1p5(
+    filepath: str,
+    video_length: int,
+    transpose: bool = False,
+    video_fps: int = 1,
+    video_height: int = 1080,
+    video_width: int = 1920,
+    ffmpeg_path: str = "ffmpeg",
+) -> tuple[np.ndarray, int]:
+  """Load input video for UVQ 1.5.
+  
+  Note: This loads the entire video into memory. Use yield_video_1p5_chunks for large videos.
+  
+  Args:
+    filepath: Path to the video file.
+    video_length: Length of the video in seconds.
+    transpose: Whether to transpose the video.
+    video_fps: Frames per second to sample for inference.
+    video_height: Height of the video to resize to.
+    video_width: Width of the video to resize to.
+
+  Returns:
+    A tuple containing the loaded video as a numpy array and the number of
+    real frames.
+  """
+  chunks = []
+  num_real_frames = 0
+  for chunk, n_frames in yield_video_1p5_chunks(
+      filepath, video_length, transpose, video_fps, video_height, video_width, ffmpeg_path
+  ):
+    chunks.append(chunk)
+    num_real_frames = n_frames
+  
+  if not chunks:
+      return np.array([]), 0
+
+  # Reconstruct the full video array.
+  # Shape will be (TotalFrames, 1, H, W, 3).
+  video = np.concatenate(chunks, axis=0) 
+      
   return video, num_real_frames
