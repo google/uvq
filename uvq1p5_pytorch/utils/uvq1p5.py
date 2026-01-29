@@ -109,6 +109,7 @@ class UVQ1p5(nn.Module):
       fps: int = 1,
       orig_fps: float | None = None,
       ffmpeg_path: str = "ffmpeg",
+      device: str = "cpu",
   ) -> dict[str, Any]:
     """Runs UVQ 1.5 inference on a video file.
 
@@ -119,6 +120,8 @@ class UVQ1p5(nn.Module):
       fps: Frames per second to sample for inference.
       orig_fps: Original frames per second of the video, used for frame index
         calculation.
+      ffmpeg_path: Path to ffmpeg executable.
+      device: Device to run inference on (e.g., 'cpu' or 'cuda').
 
     Returns:
       A dictionary containing the overall UVQ 1.5 score, per-frame scores,
@@ -141,16 +144,16 @@ class UVQ1p5(nn.Module):
       predictions = []
       with torch.inference_mode():
         for i in range(0, num_frames, batch_size):
-          batch = video_1080p[i : i + batch_size]
+          batch = video_1080p[i : i + batch_size].to(device)
           prediction_batch = self.uvq1p5_core(batch)
           predictions.append(prediction_batch)
       prediction = torch.cat(predictions, dim=0)
     else:
       with torch.inference_mode():
-        prediction = self.uvq1p5_core(video_1080p)
+        prediction = self.uvq1p5_core(video_1080p.to(device))
 
     video_score = torch.mean(prediction).item()
-    frame_scores = prediction.numpy().flatten().tolist()
+    frame_scores = prediction.cpu().numpy().flatten().tolist()
 
     if orig_fps:
       frame_indices = [
