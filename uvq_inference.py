@@ -21,6 +21,7 @@ import os
 import json
 from typing import Any
 import tqdm
+import torch
 
 from utils import probe
 
@@ -96,6 +97,7 @@ def run_batch_inference(args):
             fps=fps_to_use,
             orig_fps=orig_fps,
             ffmpeg_path=args.ffmpeg_path,
+            device=args.device,
         )
         score = results["uvq1p5_score"]
       elif args.model_version == "1.0":
@@ -167,9 +169,12 @@ def run_single_inference(args):
         fps=fps,
         orig_fps=orig_fps,
         ffmpeg_path=args.ffmpeg_path,
+        device=args.device,
     )
   elif args.model_version == "1.0":
     uvq_inference = uvq1p0.UVQ1p0()
+    if args.device == "cuda":
+      uvq_inference.cuda()
     # UVQ1.0 infer doesn't support fps or padding args.
     # It uses its own video reader, which has fixed 5 fps sampling.
     # If fps is passed for 1.0, it will be ignored by 1.0 infer method.
@@ -200,6 +205,10 @@ def run_single_inference(args):
 def main():
   parser = setup_parser()
   args = parser.parse_args()
+
+  if args.device == "cuda" and not torch.cuda.is_available():
+    print("Error: CUDA is not available, please use --device cpu")
+    return
 
   if args.input.endswith(".txt"):
     run_batch_inference(args)
@@ -257,6 +266,7 @@ def setup_parser():
       "--device",
       type=str,
       default="cpu",
+      choices=["cpu", "cuda"],
       help="Device to run inference on (e.g., 'cpu' or 'cuda').",
   )
   parser.add_argument(
