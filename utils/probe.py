@@ -16,6 +16,7 @@ limitations under the License.
 """
 
 import math
+import re
 import subprocess
 
 
@@ -39,7 +40,7 @@ def get_dimensions(
     result = subprocess.run(
         cmd,
         stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        stderr=subprocess.PIPE,
         check=True,
         text=True,
     )
@@ -72,7 +73,7 @@ def get_nb_frames(video_path, ffprobe_path="ffprobe") -> int | None:
     result = subprocess.run(
         cmd,
         stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        stderr=subprocess.PIPE,
         check=True,
         text=True,
     )
@@ -103,7 +104,7 @@ def get_r_frame_rate(video_path, ffprobe_path="ffprobe") -> int | None:
     result = subprocess.run(
         cmd,
         stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        stderr=subprocess.PIPE,
         check=True,
         text=True,
     )
@@ -137,10 +138,18 @@ def get_video_duration(video_path, ffprobe_path="ffprobe") -> float | None:
   ]
   try:
     result = subprocess.run(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+        text=True,
     )
-    duration = float(result.stdout)
-    return duration
+    matches = re.findall(r"^\s*(\d+\.?\d*)\s*$", result.stdout, re.MULTILINE)
+    if not matches:
+      print(f"Could not get duration for {video_path}")
+      return None
+    return float(matches[-1])
   except Exception as e:
     print(f"Error getting duration for {video_path}: {e}")
     return None
+
