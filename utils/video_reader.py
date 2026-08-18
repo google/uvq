@@ -17,6 +17,7 @@ limitations under the License.
 
 import logging
 import os
+import shlex
 import subprocess
 import tempfile
 
@@ -73,10 +74,12 @@ def load_video_1p0(
       f"[tmp]scale={input_width_content}:{input_height_content}:flags=bilinear[out2]"
   )
   cmd = (
-      f"{ffmpeg_path}  -i {filepath} -filter_complex \"{filter_complex}\""
-      f" -map [out1] -r {video_fps} -f rawvideo -pix_fmt rgb24 -y {temp_filename}"
+      f"{ffmpeg_path}  -i {shlex.quote(filepath)} -filter_complex"
+      f" \"{filter_complex}\""
+      f" -map [out1] -r {video_fps} -f rawvideo -pix_fmt rgb24 -y"
+      f" {shlex.quote(temp_filename)}"
       f" -map [out2] -r {video_fps} -f rawvideo -pix_fmt rgb24 -y"
-      f" {temp_filename_small}"
+      f" {shlex.quote(temp_filename_small)}"
   )
 
   try:
@@ -190,9 +193,9 @@ def load_video_1p5(
   # Sample at constant frame rate, and save as RGB24 (RGBRGB...)
   fd, temp_filename = tempfile.mkstemp()
   cmd = (
-      f"{ffmpeg_path} -i {filepath} -vf"
+      f"{ffmpeg_path} -i {shlex.quote(filepath)} -vf"
       f" {transpose_param}scale=w={video_width}:h={video_height}:flags=bicubic,format=rgb24"
-      f" -r {video_fps} -f rawvideo -pix_fmt rgb24 -y {temp_filename}"
+      f" -r {video_fps} -f rawvideo -pix_fmt rgb24 -y {shlex.quote(temp_filename)}"
   )
 
   try:
@@ -246,3 +249,4 @@ def load_video_1p5(
   logging.info("Load %s done successfully.", filepath)
 
   return video, num_real_frames
+
