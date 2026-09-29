@@ -17,7 +17,6 @@ limitations under the License.
 
 import logging
 import os
-import shlex
 import subprocess
 import tempfile
 from collections.abc import Iterator
@@ -242,7 +241,7 @@ def iter_video_batches_1p5(
       video_width,
       ffmpeg_path,
   )
-  logging.info("Run with cmd:%s\n", shlex.join(command))
+  logging.info("Run with cmd: %s\n", subprocess.list2cmdline(command))
 
   num_real_frames = 0
   emitted_frames = 0
