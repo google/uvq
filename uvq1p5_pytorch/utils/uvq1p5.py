@@ -110,6 +110,7 @@ class UVQ1p5(nn.Module):
       orig_fps: float | None = None,
       ffmpeg_path: str = "ffmpeg",
       device: str = "cpu",
+      batch_size: int | None = None,
   ) -> dict[str, Any]:
     """Runs UVQ 1.5 inference on a video file.
 
@@ -122,35 +123,35 @@ class UVQ1p5(nn.Module):
         calculation.
       ffmpeg_path: Path to ffmpeg executable.
       device: Device to run inference on (e.g., 'cpu' or 'cuda').
+      batch_size: Maximum number of sampled frames per inference batch.
+        Defaults to 1 on CPU and 24 on other devices.
 
     Returns:
       A dictionary containing the overall UVQ 1.5 score, per-frame scores,
       and frame indices.
     """
-    video_1080p, _ = self.load_video(
-        video_filename,
-        video_length,
-        transpose,
-        fps=fps,
-        ffmpeg_path=ffmpeg_path,
-    )
-    num_seconds, read_fps, c, h, w = video_1080p.shape
-    # reshape to (num_seconds * fps, 1, 3, h, w) to process all frames
-    num_frames = num_seconds * read_fps
-    video_1080p = video_1080p.reshape(num_frames, 1, c, h, w)
+    if batch_size is None:
+      batch_size = 1 if device == "cpu" else 24
 
-    batch_size = 24
-    if num_frames > batch_size: # if video is longer than batch size, run inference in batches to avoid OOM
-      predictions = []
-      with torch.inference_mode():
-        for i in range(0, num_frames, batch_size):
-          batch = video_1080p[i : i + batch_size].to(device)
-          prediction_batch = self.uvq1p5_core(batch)
-          predictions.append(prediction_batch)
-      prediction = torch.cat(predictions, dim=0)
-    else:
-      with torch.inference_mode():
-        prediction = self.uvq1p5_core(video_1080p.to(device))
+    # Keep convolution weights in the layout of the decoded RGB input on CPU.
+    if device == "cpu":
+      self.uvq1p5_core.to(memory_format=torch.channels_last)
+
+    predictions = []
+    with torch.inference_mode():
+      for video_batch, _ in video_reader.iter_video_batches_1p5(
+          video_filename,
+          video_length,
+          transpose,
+          video_fps=fps,
+          batch_size=batch_size,
+          ffmpeg_path=ffmpeg_path,
+      ):
+        batch = torch.from_numpy(video_batch).permute(0, 3, 1, 2)
+        batch = batch.unsqueeze(1).to(device)
+        predictions.append(self.uvq1p5_core(batch))
+
+    prediction = torch.cat(predictions, dim=0)
 
     video_score = torch.mean(prediction).item()
     frame_scores = prediction.cpu().numpy().flatten().tolist()
