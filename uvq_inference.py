@@ -98,6 +98,7 @@ def run_batch_inference(args):
             orig_fps=orig_fps,
             ffmpeg_path=args.ffmpeg_path,
             device=args.device,
+            batch_size=args.batch_size,
         )
         score = results["uvq1p5_score"]
       elif args.model_version == "1.0":
@@ -170,6 +171,7 @@ def run_single_inference(args):
         orig_fps=orig_fps,
         ffmpeg_path=args.ffmpeg_path,
         device=args.device,
+        batch_size=args.batch_size,
     )
   elif args.model_version == "1.0":
     uvq_inference = uvq1p0.UVQ1p0()
@@ -205,6 +207,22 @@ def run_single_inference(args):
 def main():
   parser = setup_parser()
   args = parser.parse_args()
+
+  if args.batch_size is None:
+    args.batch_size = 1 if args.device == "cpu" else 24
+  if args.batch_size < 1:
+    parser.error("--batch_size must be at least 1")
+  if args.threads is None and args.device == "cpu":
+    try:
+      available_cpus = len(os.sched_getaffinity(0))
+    except AttributeError:
+      available_cpus = os.cpu_count() or 1
+    args.threads = min(4, available_cpus)
+  if args.threads is not None and args.threads < 1:
+    parser.error("--threads must be at least 1")
+  if args.threads is not None:
+    torch.set_num_threads(args.threads)
+    torch.set_num_interop_threads(1)
 
   if args.device == "cuda" and not torch.cuda.is_available():
     print("Error: CUDA is not available, please use --device cpu")
@@ -275,6 +293,24 @@ def setup_parser():
       default=1,
       help="Frames per second to sample for UVQ1.5. -1 to sample all frames."
       " Ignored for UVQ1.0.",
+  )
+  parser.add_argument(
+      "--batch_size",
+      type=int,
+      default=None,
+      help=(
+          "Maximum sampled frames per UVQ1.5 inference batch. Defaults to 1"
+          " on CPU and 24 on CUDA."
+      ),
+  )
+  parser.add_argument(
+      "--threads",
+      type=int,
+      default=None,
+      help=(
+          "PyTorch CPU inference threads. Defaults to at most 4 available"
+          " CPUs on CPU; PyTorch chooses the thread count on CUDA."
+      ),
   )
   parser.add_argument(
       "--output_all_stats",

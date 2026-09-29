@@ -111,6 +111,8 @@ Gaming_1080P-0ce6_orig.mp4,3.880362033843994
 *   `--output OUTPUT`: Path to save the output scores to a file. Scores will be saved in JSON format.
 *   `--device DEVICE`: Device to run inference on (e.g., `cpu` or `cuda`).
 *   `--fps FPS`: (UVQ 1.5 only) Frames per second to sample. Default is 1. Use -1 to sample all frames.
+*   `--batch_size BATCH_SIZE`: (UVQ 1.5 only) Maximum sampled frames per inference batch. Defaults to 1 on CPU and 24 on CUDA.
+*   `--threads THREADS`: Number of PyTorch CPU inference threads. CPU inference defaults to the smaller of four and the number of CPUs available to the process.
 *   `--output_all_stats`: If specified, print all stats in JSON format to stdout.
 *   `--ffmpeg_path`: Path to FFmpeg executable (default: `ffmpeg`).
 *   `--ffprobe_path`: Path to FFprobe executable (default: `ffprobe`).
